@@ -1,0 +1,48 @@
+# Raw Dataset Directories (MUST NOT BE COMMITTED TO GIT)
+URFD/
+Le2i/
+dataset/
+
+# Processed Data, Extracted Frames & Model Artifacts
+processed_data/
+extracted_frames/
+checkpoints/
+models/
+*.pth
+*.pt
+*.onnx
+*.tflite
+*.h5
+*.ckpt
+
+# Python / Virtual Environment / Caches
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment Variables & Credentials
+.env
+.env.*
+credentials.json
+*.pem
+*.key
+
+# IDE and System Files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
