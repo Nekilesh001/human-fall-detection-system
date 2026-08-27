@@ -1,0 +1,8 @@
+{
+  "trial_id": 4,
+  "lr": 0.003,
+  "weight_decay": 0.0001,
+  "dropout_p": 0.3,
+  "batch_size": 16,
+  "desc": "High LR (3e-3), Drop 0.3"
+}

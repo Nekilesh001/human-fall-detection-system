@@ -1,0 +1,61 @@
+{
+  "experiment": "URFD RGB Baseline",
+  "device": "cuda",
+  "best_epoch": 2,
+  "selected_val_threshold": 0.1,
+  "parameter_counts": {
+    "total": 65730,
+    "trainable": 65730,
+    "frozen": 0
+  },
+  "inference_performance": {
+    "window_latency_ms": 0.16,
+    "equivalent_frame_fps": 312550.6
+  },
+  "test_metrics_default_tau_0_5": {
+    "threshold": 0.5,
+    "tp": 24,
+    "tn": 33,
+    "fp": 0,
+    "fn": 0,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "sensitivity": 1.0,
+    "specificity": 1.0,
+    "f1": 1.0,
+    "confusion_matrix": [
+      [
+        33,
+        0
+      ],
+      [
+        0,
+        24
+      ]
+    ]
+  },
+  "test_metrics_selected_tau_star": {
+    "threshold": 0.1,
+    "tp": 24,
+    "tn": 33,
+    "fp": 0,
+    "fn": 0,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "sensitivity": 1.0,
+    "specificity": 1.0,
+    "f1": 1.0,
+    "confusion_matrix": [
+      [
+        33,
+        0
+      ],
+      [
+        0,
+        24
+      ]
+    ]
+  }
+}

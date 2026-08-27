@@ -1,0 +1,31 @@
+{
+  "total_windows": 1396,
+  "elapsed_seconds": 1269.0994259,
+  "manifest_path": "d:\\ONE_DATA\\Fall detection\\processed_data\\Le2i_baseline\\processed_pose_features_manifest.csv",
+  "location_stats": {
+    "Coffee_room_01": {
+      "total_frames": 25100,
+      "detected_frames": 23502,
+      "total_wins": 502,
+      "completely_undetected_wins": 3
+    },
+    "Coffee_room_02": {
+      "total_frames": 20500,
+      "detected_frames": 18691,
+      "total_wins": 410,
+      "completely_undetected_wins": 8
+    },
+    "Home_01": {
+      "total_frames": 11950,
+      "detected_frames": 5871,
+      "total_wins": 239,
+      "completely_undetected_wins": 33
+    },
+    "Home_02": {
+      "total_frames": 12250,
+      "detected_frames": 4665,
+      "total_wins": 245,
+      "completely_undetected_wins": 57
+    }
+  }
+}

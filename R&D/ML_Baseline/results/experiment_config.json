@@ -1,0 +1,23 @@
+{
+  "dataset": "URFD RGB Baseline",
+  "seed": 42,
+  "batch_size": 8,
+  "lr": 0.001,
+  "weight_decay": 0.01,
+  "epochs": 50,
+  "dropout": 0.5,
+  "augment": false,
+  "optimizer": "AdamW",
+  "scheduler": "CosineAnnealingLR",
+  "class_weights": {
+    "NORMAL": 0.7386363636363636,
+    "FALL": 1.5476190476190477
+  },
+  "target_fps": 25.0,
+  "window_size": 50,
+  "stride": 25,
+  "resolution": [
+    320,
+    240
+  ]
+}
