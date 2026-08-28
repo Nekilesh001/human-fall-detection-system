@@ -1,0 +1,24 @@
+{
+  "experiment": "Experiment K Phase K2 (100-Frame Precomputation)",
+  "total_windows": 1142,
+  "feature_dim": 165,
+  "tensor_shape": [
+    100,
+    165
+  ],
+  "dtype": "float32",
+  "total_storage_mb": 37.72,
+  "precomputation_time_sec": 373.21,
+  "target_manifest": "d:\\ONE_DATA\\Fall detection\\processed_data\\Le2i_baseline\\processed_pose_100f_manifest.csv",
+  "target_directory": "d:\\ONE_DATA\\Fall detection\\processed_data\\Le2i_baseline\\pose_estimator_features\\yolo_pose_100f",
+  "label_counts": {
+    "NORMAL": 838,
+    "FALL": 304
+  },
+  "location_counts": {
+    "Coffee_room_01": 408,
+    "Coffee_room_02": 370,
+    "Home_02": 185,
+    "Home_01": 179
+  }
+}

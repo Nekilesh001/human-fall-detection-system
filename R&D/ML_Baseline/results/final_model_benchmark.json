@@ -1,0 +1,72 @@
+{
+  "champion_model": "Model K1 (YOLO Pose + 187-D Spatial TCN)",
+  "parameters": 89250,
+  "input_shape": [1, 50, 187],
+  "sequence_length_frames": 50,
+  "sequence_duration_seconds": 2.0,
+  "frame_rate_fps": 25,
+  "official_uncheated_lolo_f1_mean": 0.8665330364966967,
+  "lolo_f1_std": 0.056426743958937085,
+  "threshold_policy": "Leakage-free inner validation threshold selection (mean tau = 0.4923)",
+  "exploratory_upper_bound_note": "Outer-test sweep peak at tau=0.55 is 87.45%, NOT official benchmark",
+  "checkpoint_hashes": {
+    "fold_1": "099edd6e3b549e816f90a0ec8f2bf90c311e9735da9d1ee11d1acd6d22363c21",
+    "fold_2": "7ca9d0ec5cc310ec12f99d83c373bffbd512c992d27883a1ea3421299f7ba3fc",
+    "fold_3": "7fb0675474349151ac2033ab943dea864bb517a47a9b18760e8eebfa94f900ab",
+    "fold_4": "6ee5469704def6328a8f95d6b05f1e22e8b6db4e87026a72eed171b10634bb2e"
+  },
+  "folds": [
+    {
+      "fold": 1,
+      "test_location": "Coffee_room_01",
+      "tau_inner": 0.5000,
+      "f1": 0.9187708678898777,
+      "precision": 0.8864864864864865,
+      "recall": 0.9534883720930233,
+      "specificity": 0.9363636363636364,
+      "tp": 164,
+      "fp": 21,
+      "tn": 309,
+      "fn": 8
+    },
+    {
+      "fold": 2,
+      "test_location": "Coffee_room_02",
+      "tau_inner": 0.4690,
+      "f1": 0.9038461538461539,
+      "precision": 0.8245614035087719,
+      "recall": 1.0000000000000000,
+      "specificity": 0.9724517906336088,
+      "tp": 47,
+      "fp": 10,
+      "tn": 353,
+      "fn": 0
+    },
+    {
+      "fold": 3,
+      "test_location": "Home_01",
+      "tau_inner": 0.5000,
+      "f1": 0.7738693467336684,
+      "precision": 0.7064220183486238,
+      "recall": 0.8555555555555555,
+      "specificity": 0.7852348993288590,
+      "tp": 77,
+      "fp": 32,
+      "tn": 117,
+      "fn": 13
+    },
+    {
+      "fold": 4,
+      "test_location": "Home_02",
+      "tau_inner": 0.5000,
+      "f1": 0.8695652173913043,
+      "precision": 0.8333333333333334,
+      "recall": 0.9090909090909091,
+      "specificity": 0.9820627802690583,
+      "tp": 20,
+      "fp": 4,
+      "tn": 219,
+      "fn": 2
+    }
+  ]
+}

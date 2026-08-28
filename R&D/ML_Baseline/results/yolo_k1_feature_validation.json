@@ -1,0 +1,178 @@
+[
+  {
+    "feature_index":0,
+    "feature_name":"L Knee Angle",
+    "min":0.003383,
+    "max":3.140088,
+    "mean":2.634601,
+    "std":0.597407
+  },
+  {
+    "feature_index":1,
+    "feature_name":"R Knee Angle",
+    "min":0.003638,
+    "max":3.140049,
+    "mean":2.656379,
+    "std":0.610677
+  },
+  {
+    "feature_index":2,
+    "feature_name":"L Hip Angle",
+    "min":0.002784,
+    "max":3.139799,
+    "mean":2.613874,
+    "std":0.60191
+  },
+  {
+    "feature_index":3,
+    "feature_name":"R Hip Angle",
+    "min":0.002072,
+    "max":3.139733,
+    "mean":2.625982,
+    "std":0.616289
+  },
+  {
+    "feature_index":4,
+    "feature_name":"L Elbow Angle",
+    "min":0.00367,
+    "max":3.139733,
+    "mean":2.416893,
+    "std":0.671504
+  },
+  {
+    "feature_index":5,
+    "feature_name":"R Elbow Angle",
+    "min":0.001922,
+    "max":3.140821,
+    "mean":2.383768,
+    "std":0.684498
+  },
+  {
+    "feature_index":6,
+    "feature_name":"L Shoulder Angle",
+    "min":0.0021,
+    "max":3.138263,
+    "mean":0.491278,
+    "std":0.500941
+  },
+  {
+    "feature_index":7,
+    "feature_name":"R Shoulder Angle",
+    "min":0.001761,
+    "max":3.139973,
+    "mean":0.506903,
+    "std":0.516238
+  },
+  {
+    "feature_index":8,
+    "feature_name":"Spine Inclination",
+    "min":0.001381,
+    "max":3.136068,
+    "mean":0.46517,
+    "std":0.670926
+  },
+  {
+    "feature_index":9,
+    "feature_name":"Neck Angle",
+    "min":0.002537,
+    "max":3.139409,
+    "mean":2.365287,
+    "std":0.580447
+  },
+  {
+    "feature_index":10,
+    "feature_name":"L Leg Vertical",
+    "min":0.000772,
+    "max":3.139799,
+    "mean":0.435651,
+    "std":0.637852
+  },
+  {
+    "feature_index":11,
+    "feature_name":"R Leg Vertical",
+    "min":0.000488,
+    "max":3.140902,
+    "mean":0.443116,
+    "std":0.640946
+  },
+  {
+    "feature_index":12,
+    "feature_name":"BBox Aspect Ratio",
+    "min":0.0,
+    "max":9.271645,
+    "mean":0.515096,
+    "std":0.683321
+  },
+  {
+    "feature_index":13,
+    "feature_name":"BBox Area Ratio",
+    "min":0.0,
+    "max":4260.106445,
+    "mean":4.132905,
+    "std":37.633011
+  },
+  {
+    "feature_index":14,
+    "feature_name":"Norm Head Height",
+    "min":-18.148123,
+    "max":21.913815,
+    "mean":-0.931737,
+    "std":0.88203
+  },
+  {
+    "feature_index":15,
+    "feature_name":"Norm L Wrist Height",
+    "min":-67.108849,
+    "max":87.750427,
+    "mean":-0.122861,
+    "std":2.695104
+  },
+  {
+    "feature_index":16,
+    "feature_name":"Norm R Wrist Height",
+    "min":-70.453308,
+    "max":84.998161,
+    "mean":-0.128704,
+    "std":2.775663
+  },
+  {
+    "feature_index":17,
+    "feature_name":"Norm Ankle Height",
+    "min":-30.039841,
+    "max":86.127243,
+    "mean":1.124938,
+    "std":1.676924
+  },
+  {
+    "feature_index":18,
+    "feature_name":"Torso Scale Ratio",
+    "min":0.000001,
+    "max":49.995068,
+    "mean":0.994985,
+    "std":0.491938
+  },
+  {
+    "feature_index":19,
+    "feature_name":"Shoulder Tilt Angle",
+    "min":-3.141559,
+    "max":3.141593,
+    "mean":-0.132449,
+    "std":2.266279
+  },
+  {
+    "feature_index":20,
+    "feature_name":"Hip Tilt Angle",
+    "min":-3.141551,
+    "max":3.141593,
+    "mean":0.005869,
+    "std":2.251428
+  },
+  {
+    "feature_index":21,
+    "feature_name":"Torso Aspect Ratio",
+    "min":0.0,
+    "max":35.461563,
+    "mean":0.422043,
+    "std":0.513362
+  }
+]

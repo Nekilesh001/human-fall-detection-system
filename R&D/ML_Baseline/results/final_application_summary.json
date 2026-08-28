@@ -1,0 +1,26 @@
+{
+  "test_1_fall": {
+    "total_frames": 157,
+    "warmed_windows": 108,
+    "raw_fall_windows": 94,
+    "stabilized_alert_windows": 92,
+    "mean_fps": 108.92299333681251,
+    "mean_latency_ms": 20.06057961773929
+  },
+  "test_2_normal_adl": {
+    "total_frames": 729,
+    "warmed_windows": 680,
+    "raw_fall_windows": 30,
+    "stabilized_alert_windows": 57,
+    "mean_fps": 99.44031825174376,
+    "mean_latency_ms": 10.20806296297084
+  },
+  "test_3_fast_bending": {
+    "total_frames": 264,
+    "warmed_windows": 215,
+    "raw_fall_windows": 106,
+    "stabilized_alert_windows": 104,
+    "mean_fps": 99.88908981587551,
+    "mean_latency_ms": 10.425154545421748
+  }
+}

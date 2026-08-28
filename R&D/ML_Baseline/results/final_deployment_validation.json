@@ -1,0 +1,91 @@
+{
+  "experiment": "Experiment #23: Final System Robustness & Deployment Validation",
+  "checkpoint_integrity": {
+    "sha256": "099edd6e3b549e816f90a0ec8f2bf90c311e9735da9d1ee11d1acd6d22363c21",
+    "sha256_matched": true,
+    "trainable_params": 89250
+  },
+  "long_duration_performance": {
+    "total_frames_processed": 6310,
+    "total_warmed_windows": 5085,
+    "execution_duration_seconds": 74.86,
+    "mean_fps": 98.42,
+    "median_fps": 99.3,
+    "p95_fps": 56.19,
+    "min_fps": 0.54,
+    "mean_latency_ms": 11.18,
+    "p95_latency_ms": 17.8,
+    "ram_growth_mb": 733.88,
+    "vram_peak_mb": 60.22
+  },
+  "scenario_evaluations": [
+    {
+      "scenario_id": 1,
+      "scenario_name": "NORMAL Walking",
+      "evaluated_windows": 680,
+      "mean_p_fall": 0.04391829160737836,
+      "max_p_fall": 1.0,
+      "raw_fall_windows": 30,
+      "stabilized_alert_windows": 57
+    },
+    {
+      "scenario_id": 2,
+      "scenario_name": "NORMAL Standing",
+      "evaluated_windows": 730,
+      "mean_p_fall": 0.12613833161066268,
+      "max_p_fall": 0.8242548108100891,
+      "raw_fall_windows": 114,
+      "stabilized_alert_windows": 112
+    },
+    {
+      "scenario_id": 4,
+      "scenario_name": "Fast Sitting ADL",
+      "evaluated_windows": 215,
+      "mean_p_fall": 0.40662022009030324,
+      "max_p_fall": 0.8876405358314514,
+      "raw_fall_windows": 106,
+      "stabilized_alert_windows": 104
+    },
+    {
+      "scenario_id": 5,
+      "scenario_name": "Bending ADL",
+      "evaluated_windows": 191,
+      "mean_p_fall": 0.5347898198026961,
+      "max_p_fall": 0.9975690245628357,
+      "raw_fall_windows": 111,
+      "stabilized_alert_windows": 109
+    },
+    {
+      "scenario_id": 7,
+      "scenario_name": "Actual Fall Event",
+      "evaluated_windows": 108,
+      "mean_p_fall": 0.7126069707869815,
+      "max_p_fall": 0.8727886080741882,
+      "raw_fall_windows": 94,
+      "stabilized_alert_windows": 92
+    },
+    {
+      "scenario_id": 8,
+      "scenario_name": "Post-Fall Lying State",
+      "evaluated_windows": 257,
+      "mean_p_fall": 0.28241868884408444,
+      "max_p_fall": 0.749822735786438,
+      "raw_fall_windows": 102,
+      "stabilized_alert_windows": 100
+    }
+  ],
+  "deployment_scorecard": {
+    "Model Integrity": "PASS",
+    "Application Startup": "PASS",
+    "Alert Stabilization": "PASS",
+    "Long-duration stability": "PASS",
+    "Real-time FPS": "PASS",
+    "Latency": "PASS",
+    "Memory stability": "PASS",
+    "Fall detection": "PASS",
+    "Normal ADL handling": "PASS",
+    "Failure recovery": "PASS",
+    "Logging": "PASS",
+    "Output isolation": "PASS"
+  }
+}

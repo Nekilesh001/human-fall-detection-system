@@ -1,0 +1,2 @@
+gpu_name,target_fps,end_to_end_fps,e2e_latency_mean_ms,e2e_latency_p95_ms,yolo_latency_mean_ms,k1_tcn_latency_mean_ms,vram_peak_mb,realtime_capable
+NVIDIA GeForce RTX 4060 Laptop GPU,25.0,119.32,8.381089000085922,9.919979999449424,6.739858000000822,0.9487369999624207,70.57421875,True

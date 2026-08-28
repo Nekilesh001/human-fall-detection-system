@@ -1,0 +1,79 @@
+{
+  "k2_100f_tcn": {
+    "name": "Model K2: 100-Frame Temporal TCN",
+    "parameters": 83618,
+    "lolo_f1_default_mean": 0.4616588419405321,
+    "lolo_f1_optimal_mean": 0.4454310547333803,
+    "lolo_f1_optimal_std": 0.3154514464305383,
+    "folds": [
+      {
+        "fold": 1,
+        "test_location": "Coffee_room_01",
+        "tau_star": 0.49,
+        "val_f1_star": 0.8709677419354839,
+        "f1_default": 0.29107981220657275,
+        "f1_optimal": 0.30697674418604654,
+        "precision": 0.9428571428571428,
+        "recall": 0.18333333333333332,
+        "specificity": 0.9912280701754386,
+        "roc_auc": 0.8440302144249513,
+        "pr_auc": 0.8622251131482401,
+        "tp": 33,
+        "fp": 2,
+        "tn": 226,
+        "fn": 147
+      },
+      {
+        "fold": 2,
+        "test_location": "Coffee_room_02",
+        "tau_star": 0.45000000000000007,
+        "val_f1_star": 0.9763779527559056,
+        "f1_default": 0.0,
+        "f1_optimal": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "specificity": 0.7945945945945946,
+        "roc_auc": NaN,
+        "pr_auc": 0.0,
+        "tp": 0,
+        "fp": 76,
+        "tn": 294,
+        "fn": 0
+      },
+      {
+        "fold": 3,
+        "test_location": "Home_01",
+        "tau_star": 0.47,
+        "val_f1_star": 0.9148936170212766,
+        "f1_default": 0.8,
+        "f1_optimal": 0.8080808080808081,
+        "precision": 0.8247422680412371,
+        "recall": 0.7920792079207921,
+        "specificity": 0.782051282051282,
+        "roc_auc": 0.7985529322162985,
+        "pr_auc": 0.8038646390046502,
+        "tp": 80,
+        "fp": 17,
+        "tn": 61,
+        "fn": 21
+      },
+      {
+        "fold": 4,
+        "test_location": "Home_02",
+        "tau_star": 0.13,
+        "val_f1_star": 0.9064748201438849,
+        "f1_default": 0.7555555555555555,
+        "f1_optimal": 0.6666666666666666,
+        "precision": 0.5405405405405406,
+        "recall": 0.8695652173913043,
+        "specificity": 0.8950617283950617,
+        "roc_auc": 0.8909017713365539,
+        "pr_auc": 0.8038128507839897,
+        "tp": 20,
+        "fp": 17,
+        "tn": 145,
+        "fn": 3
+      }
+    ]
+  }
+}

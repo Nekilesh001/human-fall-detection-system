@@ -1,0 +1,15 @@
+{
+  "experiment": "Experiment K Phase K1 (Spatial Feature Precomputation)",
+  "total_windows": 1396,
+  "feature_dim": 187,
+  "base_dim": 165,
+  "derived_dim": 22,
+  "tensor_shape": [
+    50,
+    187
+  ],
+  "dtype": "float32",
+  "total_storage_mb": 28.08,
+  "precomputation_time_sec": 3.52,
+  "target_directory": "d:\\ONE_DATA\\Fall detection\\processed_data\\Le2i_baseline\\pose_estimator_features\\yolo_pose_k1"
+}

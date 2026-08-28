@@ -1,0 +1,71 @@
+{
+  "device": "cuda",
+  "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "cuda_version": "12.6",
+  "iterations_evaluated": 100,
+  "realtime_capable": true,
+  "target_fps": 25.0,
+  "end_to_end_fps": 119.32,
+  "yolo_pose_fps": 148.37,
+  "k1_model_fps": 1054.03,
+  "memory_footprint_mb": {
+    "ram_used_mb": 1502.82,
+    "vram_allocated_mb": 44.99,
+    "vram_peak_mb": 70.57
+  },
+  "latency_stats_ms": {
+    "yolo_pose": {
+      "mean_ms": 6.739858000000822,
+      "median_ms": 6.57260000025417,
+      "p95_ms": 8.15035000014177,
+      "p99_ms": 8.546399000006204,
+      "min_ms": 5.997300000672112,
+      "max_ms": 8.645300000353018,
+      "std_ms": 0.5918370518448782
+    },
+    "spatial_feature_extraction": {
+      "mean_ms": 0.6543929999133979,
+      "median_ms": 0.6439999997382984,
+      "p95_ms": 0.7764450001559453,
+      "p99_ms": 0.8657799998400151,
+      "min_ms": 0.5796999994345242,
+      "max_ms": 0.8736999989196192,
+      "std_ms": 0.05206861859854522
+    },
+    "temporal_buffering": {
+      "mean_ms": 0.03698000005897484,
+      "median_ms": 0.03564999951777281,
+      "p95_ms": 0.048314998639398254,
+      "p99_ms": 0.055757000882295196,
+      "min_ms": 0.027800000680144876,
+      "max_ms": 0.10099999963131268,
+      "std_ms": 0.008847688927021027
+    },
+    "k1_tcn_model": {
+      "mean_ms": 0.9487369999624207,
+      "median_ms": 0.9266499992008903,
+      "p95_ms": 1.1593050002375094,
+      "p99_ms": 1.2922039997829415,
+      "min_ms": 0.789099998655729,
+      "max_ms": 1.3025000007473864,
+      "std_ms": 0.10340524517174975
+    },
+    "end_to_end": {
+      "mean_ms": 8.381089000085922,
+      "median_ms": 8.196650000172667,
+      "p95_ms": 9.919979999449424,
+      "p99_ms": 10.36621999934141,
+      "min_ms": 7.481900000129826,
+      "max_ms": 10.496900000362075,
+      "std_ms": 0.6698133626870469
+    }
+  },
+  "stream_stability_test": {
+    "video_path": "d:\\ONE_DATA\\Fall detection\\Le2i\\data\\Coffee_room_01\\Coffee_room_01\\Videos\\video (1).avi",
+    "total_frames": 157,
+    "evaluated_windows": 108,
+    "threshold_used": 0.4923,
+    "normal_windows": 14,
+    "fall_windows": 94
+  }
+}
