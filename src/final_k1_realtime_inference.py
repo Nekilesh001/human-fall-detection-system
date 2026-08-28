@@ -1,11 +1,28 @@
 """
-Experiment #22: Final Production Real-Time Fall Detection Engine & Alert Stabilization Layer.
-Encapsulates frozen Model K1 inference, 50-frame temporal buffering, and temporal alert stabilization.
+Phase F5 Production Pipeline & Application State Machine.
 
-Architecture:
-Video Frame -> YOLO Pose Extractor -> 187-D Spatial Feature Derivation
-            -> 50-Frame Rolling Buffer -> Model K1 Spatial TCN -> P(FALL)
-            -> Threshold (0.4923) -> Temporal Alert Stabilizer (3-Consecutive Fall Confirmation)
+ARCHITECTURE SEPARATION:
+1. YOLO11-Pose         : Detects person, keypoints (33 landmarks), confidence, bounding box, pose geometry.
+2. Frozen Model K1     : Supervised Binary Fall Detector -> Outputs P(FALL) and raw decision (NORMAL/FALL @ tau=0.3650).
+3. Application Machine : State Machine combining YOLO Pose geometry, K1 P(FALL), and temporal logic (10 States).
+
+10 APPLICATION STATES:
+1. WARMING UP
+2. NORMAL — STANDING
+3. NORMAL — WALKING
+4. NORMAL — SITTING
+5. NORMAL (Generic Fallback)
+6. FALL SUSPECTED (1-2 consecutive windows @ P >= 0.3650)
+7. FALL DETECTED (3+ consecutive windows @ P >= 0.3650)
+8. FALLEN — ON FLOOR (Latched post-fall low posture)
+9. GETTING UP / RECOVERY (Upward motion / unbending post-fall)
+10. RECOVERED — STANDING (Sustained upright posture post-recovery)
+11. NO PERSON DETECTED (Empty room / person left frame)
+
+SCIENTIFIC NOTICE:
+Model K1 is a binary fall detector. Standing, walking, sitting, fallen, recovery, and recovered
+are application-level derived states from YOLO Pose geometry and state-machine logic. They are not
+independent classes learned by the K1 neural network.
 """
 
 import os
@@ -19,41 +36,143 @@ ROOT_DIR = r"d:\ONE_DATA\Fall detection"
 sys.path.insert(0, ROOT_DIR)
 
 from src.infer_final_k1 import YOLOPoseExtractor, compute_165d_base_features, construct_187d_window_features
-from src.train_le2i_yolo_k1_spatial import ModelK1_SpatialTCN
+from src.train_final_k1 import ModelK1_SpatialTCN
 
-class TemporalAlertStabilizer:
-    """Application-level post-processing layer for temporal alert stabilization."""
-    def __init__(self, consecutive_required=3, cooldown_frames=10):
+class ApplicationStateMachine:
+    """
+    Application-level state machine representing 10 operational states.
+    Derives user-facing state from YOLO Pose geometry, Model K1 P(FALL), and temporal history.
+    """
+    def __init__(self, consecutive_required=3, threshold=0.3650):
         self.consecutive_required = consecutive_required
-        self.cooldown_frames = cooldown_frames
+        self.threshold = threshold
+        
         self.consecutive_fall_count = 0
-        self.cooldown_counter = 0
+        self.current_state = "WARMING UP"
+        self.previous_state = "WARMING UP"
         self.alert_active = False
+        
+        self.has_confirmed_fall = False
+        self.getting_up_counter = 0
+        self.recovered_counter = 0
 
-    def update(self, raw_decision):
-        # raw_decision: 'FALL' or 'NORMAL'
-        if raw_decision == 'FALL':
+    def update(self, prob_fall, person_detected, raw_33, buffer_50, is_partial_person=False, edge_reason="FULL_PERSON"):
+        self.previous_state = self.current_state
+        
+        # 1. NO PERSON DETECTED GATE
+        if not person_detected:
+            self.consecutive_fall_count = 0
+            self.alert_active = False
+            self.current_state = "NO PERSON DETECTED"
+            transition = f"{self.previous_state} -> {self.current_state}"
+            return {
+                "current_state": self.current_state,
+                "previous_state": self.previous_state,
+                "state_transition": transition,
+                "alert_active": False,
+                "consecutive_fall_count": 0,
+                "is_partial_person": False,
+                "edge_reason": edge_reason
+            }
+
+        # 2. Extract Pose Geometry for Sub-Classification & Recovery
+        # Keypoints: nose=0, L_shoulder=11, R_shoulder=12, L_hip=23, R_hip=24, L_knee=25, R_knee=26, L_ankle=27, R_ankle=28
+        nose_y = raw_33[0, 1]
+        mid_shoulder_y = (raw_33[11, 1] + raw_33[12, 1]) / 2.0
+        mid_hip_y = (raw_33[23, 1] + raw_33[24, 1]) / 2.0
+        mid_knee_y = (raw_33[25, 1] + raw_33[26, 1]) / 2.0
+        mid_ankle_y = (raw_33[27, 1] + raw_33[28, 1]) / 2.0
+        
+        torso_len = abs(mid_hip_y - mid_shoulder_y) + 1e-6
+        upper_leg_len = abs(mid_knee_y - mid_hip_y) + 1e-6
+        
+        # Spine verticality angle
+        dx = (raw_33[12, 0] + raw_33[11, 0])/2.0 - (raw_33[24, 0] + raw_33[23, 0])/2.0
+        dy = mid_shoulder_y - mid_hip_y
+        spine_angle_deg = np.abs(np.degrees(np.arctan2(dx, dy + 1e-6)))
+        
+        # Posture geometry checks
+        is_upright = (spine_angle_deg < 35.0) and (nose_y < mid_hip_y)
+        is_sitting = (spine_angle_deg < 45.0) and (upper_leg_len / torso_len < 0.6) and (mid_hip_y < mid_ankle_y)
+        
+        # Calculate recent velocity over buffer
+        recent_keypoints = buffer_50[-10:, :, :2]
+        vel = np.mean(np.abs(np.diff(recent_keypoints, axis=0)))
+        is_walking = is_upright and (vel > 0.015)
+
+        is_raw_fall = (prob_fall >= self.threshold)
+
+        # 3. State Machine Transition Logic
+        # EDGE-OF-FRAME PROTECTION: Suppress NEW fall activations if keypoints are clipped at frame boundary
+        if is_partial_person and not self.has_confirmed_fall:
+            self.consecutive_fall_count = 0
+            self.alert_active = False
+            self.current_state = "NORMAL — WALKING" if is_walking else ("NORMAL — STANDING" if is_upright else "NORMAL")
+        elif is_raw_fall:
             self.consecutive_fall_count += 1
             if self.consecutive_fall_count >= self.consecutive_required:
                 self.alert_active = True
-                self.cooldown_counter = self.cooldown_frames
+                self.has_confirmed_fall = True
+                self.getting_up_counter = 0
+                self.recovered_counter = 0
+                self.current_state = "FALL DETECTED"
+            else:
+                if not self.has_confirmed_fall:
+                    self.current_state = "FALL SUSPECTED"
         else:
+            # P(FALL) < threshold
             self.consecutive_fall_count = max(0, self.consecutive_fall_count - 1)
-            if self.cooldown_counter > 0:
-                self.cooldown_counter -= 1
-            if self.consecutive_fall_count == 0 and self.cooldown_counter == 0:
-                self.alert_active = False
 
-        status = "ALERT" if self.alert_active else ("WARMUP_RECOVERY" if self.consecutive_fall_count > 0 else "NORMAL")
+            if self.has_confirmed_fall:
+                if not is_upright:
+                    # Still low on floor -> FALLEN — ON FLOOR (Latched!)
+                    self.current_state = "FALLEN — ON FLOOR"
+                    self.getting_up_counter = 0
+                    self.recovered_counter = 0
+                else:
+                    # Upright posture detected after a fall -> GETTING UP / RECOVERY
+                    self.getting_up_counter += 1
+                    if self.getting_up_counter < 10:
+                        self.current_state = "GETTING UP / RECOVERY"
+                    else:
+                        self.recovered_counter += 1
+                        self.current_state = "RECOVERED — STANDING"
+                        
+                        if self.recovered_counter >= 15:
+                            # Recovery sustained -> Reset fall latch
+                            self.has_confirmed_fall = False
+                            self.alert_active = False
+                            self.current_state = "NORMAL — STANDING"
+                            self.getting_up_counter = 0
+                            self.recovered_counter = 0
+            else:
+                self.alert_active = False
+                # Normal ADL Sub-Classification
+                if is_walking:
+                    self.current_state = "NORMAL — WALKING"
+                elif is_sitting:
+                    self.current_state = "NORMAL — SITTING"
+                elif is_upright:
+                    self.current_state = "NORMAL — STANDING"
+                else:
+                    self.current_state = "NORMAL"
+
+        transition = f"{self.previous_state} -> {self.current_state}"
+        
         return {
+            "current_state": self.current_state,
+            "previous_state": self.previous_state,
+            "state_transition": transition,
             "alert_active": self.alert_active,
-            "status": status,
             "consecutive_fall_count": self.consecutive_fall_count,
-            "cooldown_counter": self.cooldown_counter
+            "is_partial_person": is_partial_person,
+            "edge_reason": edge_reason
         }
 
+
 class RealtimeFallDetector:
-    def __init__(self, checkpoint_path=None, threshold_policy=0.4923, consecutive_fall_required=3):
+    """Production Real-Time Fall Detection Engine with Explicit Architecture Separation."""
+    def __init__(self, checkpoint_path=None, threshold_policy=0.3650, consecutive_fall_required=3):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.threshold_policy = threshold_policy
         self.extractor = YOLOPoseExtractor()
@@ -61,25 +180,37 @@ class RealtimeFallDetector:
         # Load Frozen Model K1
         self.model = ModelK1_SpatialTCN().to(self.device)
         if checkpoint_path is None:
-            checkpoint_path = os.path.join(ROOT_DIR, "checkpoints", "le2i_yolo_k1", "fold_1_best.pth")
-        
-        assert os.path.exists(checkpoint_path), f"Checkpoint missing: {checkpoint_path}"
-        self.model.load_state_dict(torch.load(checkpoint_path, map_location=self.device))
+            checkpoint_path = os.path.join(ROOT_DIR, "checkpoints", "final_k1", "final_production.pth")
+            
+        assert os.path.exists(checkpoint_path), f"Production checkpoint missing: {checkpoint_path}"
+        self.model.load_state_dict(torch.load(checkpoint_path, map_location=self.device, weights_only=True))
         self.model.eval()
 
-        # Buffering & Stabilization State
+        # Buffering & State Machine
         self.buffer_50 = np.zeros((50, 33, 3), dtype=np.float32)
         self.frames_buffered = 0
-        self.stabilizer = TemporalAlertStabilizer(consecutive_required=consecutive_fall_required)
+        self.state_machine = ApplicationStateMachine(
+            consecutive_required=consecutive_fall_required,
+            threshold=threshold_policy
+        )
         self.last_latency_ms = 0.0
         self.last_fps = 0.0
 
     def process_frame(self, frame_bgr):
         t_start = time.perf_counter()
         
-        # 1. YOLO Pose Keypoint Extraction
-        raw_33, detected = self.extractor.extract_landmarks(frame_bgr)
+        # 1. YOLO11-Pose Keypoint, Bounding Box & Edge-of-Frame Extraction
+        raw_33, person_detected, bbox, coco_17_px, is_partial_person, edge_reason = self.extractor.extract_landmarks(frame_bgr)
         
+        # Keypoint confidence sum validation
+        conf_sum = np.sum(raw_33[:, 2])
+        if conf_sum < 0.5:
+            person_detected = False
+            bbox = None
+            coco_17_px = None
+            is_partial_person = False
+            edge_reason = "NO_PERSON"
+            
         # 2. Update 50-Frame Rolling Buffer
         self.buffer_50 = np.roll(self.buffer_50, -1, axis=0)
         self.buffer_50[-1] = raw_33
@@ -87,27 +218,70 @@ class RealtimeFallDetector:
 
         is_warmed_up = (self.frames_buffered >= 50)
         
+        # 3. NO PERSON DETECTED GATE
+        if not person_detected:
+            t_end = time.perf_counter()
+            self.last_latency_ms = (t_end - t_start) * 1000.0
+            self.last_fps = 1000.0 / self.last_latency_ms if self.last_latency_ms > 0 else 0.0
+            
+            sm_res = self.state_machine.update(
+                prob_fall=0.0,
+                person_detected=False,
+                raw_33=raw_33,
+                buffer_50=self.buffer_50,
+                is_partial_person=False,
+                edge_reason="NO_PERSON"
+            )
+            
+            return {
+                "is_warmed_up": is_warmed_up,
+                "person_detected": False,
+                "is_partial_person": False,
+                "edge_reason": "NO_PERSON",
+                "buffer_status": f"NO PERSON DETECTED ({self.frames_buffered}/50)",
+                "raw_decision": "NO_PERSON",
+                "prob_fall": 0.0,
+                "threshold": self.threshold_policy,
+                "current_state": "NO PERSON DETECTED",
+                "previous_state": sm_res["previous_state"],
+                "state_transition": sm_res["state_transition"],
+                "alert_state": sm_res,
+                "latency_ms": self.last_latency_ms,
+                "fps": self.last_fps,
+                "raw_33": raw_33,
+                "bbox": None,
+                "coco_17_px": None
+            }
+            
         if not is_warmed_up:
             t_end = time.perf_counter()
             self.last_latency_ms = (t_end - t_start) * 1000.0
             self.last_fps = 1000.0 / self.last_latency_ms if self.last_latency_ms > 0 else 0.0
+            
             return {
                 "is_warmed_up": False,
+                "person_detected": True,
+                "is_partial_person": is_partial_person,
+                "edge_reason": edge_reason,
                 "buffer_status": f"WARMING UP ({self.frames_buffered}/50)",
                 "raw_decision": "WARMING UP",
                 "prob_fall": 0.0,
                 "threshold": self.threshold_policy,
-                "alert_state": {"alert_active": False, "status": "WARMING_UP", "consecutive_fall_count": 0, "cooldown_counter": 0},
+                "current_state": "WARMING UP",
+                "previous_state": "WARMING UP",
+                "state_transition": "WARMING UP -> WARMING UP",
+                "alert_state": {"current_state": "WARMING UP", "previous_state": "WARMING UP", "state_transition": "WARMING UP -> WARMING UP", "alert_active": False, "consecutive_fall_count": 0},
                 "latency_ms": self.last_latency_ms,
                 "fps": self.last_fps,
-                "raw_33": raw_33
+                "raw_33": raw_33,
+                "bbox": bbox,
+                "coco_17_px": coco_17_px
             }
 
-        # 3. Derive 187-D Spatial Features
+        # 4. Derive 187-D Spatial Features & Model K1 Inference
         base_165 = compute_165d_base_features(self.buffer_50)
         feat_187 = construct_187d_window_features(base_165)
 
-        # 4. Model K1 Forward Pass
         tensor_x = torch.tensor(feat_187, dtype=torch.float32).unsqueeze(0).to(self.device)
         with torch.no_grad():
             out = self.model(tensor_x)
@@ -115,8 +289,15 @@ class RealtimeFallDetector:
 
         raw_decision = "FALL" if prob_fall >= self.threshold_policy else "NORMAL"
         
-        # 5. Temporal Alert Stabilization
-        alert_state = self.stabilizer.update(raw_decision)
+        # 5. Application State Machine Update
+        sm_res = self.state_machine.update(
+            prob_fall=prob_fall,
+            person_detected=True,
+            raw_33=raw_33,
+            buffer_50=self.buffer_50,
+            is_partial_person=is_partial_person,
+            edge_reason=edge_reason
+        )
 
         t_end = time.perf_counter()
         self.last_latency_ms = (t_end - t_start) * 1000.0
@@ -124,17 +305,28 @@ class RealtimeFallDetector:
 
         return {
             "is_warmed_up": True,
+            "person_detected": True,
+            "is_partial_person": is_partial_person,
+            "edge_reason": edge_reason,
             "buffer_status": "50/50 READY",
             "raw_decision": raw_decision,
             "prob_fall": prob_fall,
             "threshold": self.threshold_policy,
-            "alert_state": alert_state,
+            "current_state": sm_res["current_state"],
+            "previous_state": sm_res["previous_state"],
+            "state_transition": sm_res["state_transition"],
+            "alert_state": sm_res,
             "latency_ms": self.last_latency_ms,
             "fps": self.last_fps,
-            "raw_33": raw_33
+            "raw_33": raw_33,
+            "bbox": bbox,
+            "coco_17_px": coco_17_px
         }
 
     def reset_buffer(self):
         self.buffer_50.fill(0)
         self.frames_buffered = 0
-        self.stabilizer = TemporalAlertStabilizer()
+        self.state_machine = ApplicationStateMachine(
+            consecutive_required=3,
+            threshold=self.threshold_policy
+        )

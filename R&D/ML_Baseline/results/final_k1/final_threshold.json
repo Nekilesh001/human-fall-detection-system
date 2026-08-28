@@ -1,0 +1,23 @@
+{
+  "per_fold_tau_star": [
+    {
+      "fold": 1,
+      "tau_star": 0.33999999999999997
+    },
+    {
+      "fold": 2,
+      "tau_star": 0.2
+    },
+    {
+      "fold": 3,
+      "tau_star": 0.48
+    },
+    {
+      "fold": 4,
+      "tau_star": 0.44000000000000006
+    }
+  ],
+  "mean_tau_star": 0.365,
+  "deployment_threshold": 0.365,
+  "selection_method": "inner-validation F1 maximization (leakage-free)"
+}
