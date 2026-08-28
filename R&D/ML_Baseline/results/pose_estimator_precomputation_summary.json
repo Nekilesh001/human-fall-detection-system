@@ -1,0 +1,38 @@
+{
+  "mediapipe": {
+    "name": "H1: MediaPipe Pose",
+    "total_windows": 1396,
+    "total_frames": 69800,
+    "detected_frames": 54836,
+    "detection_rate_pct": 78.56,
+    "fully_detected_windows": 717,
+    "partially_detected_windows": 605,
+    "undetected_windows": 74,
+    "storage_mb": 31.86,
+    "validation_gate": "PASS"
+  },
+  "yolo_pose": {
+    "name": "H2: YOLO Pose",
+    "total_windows": 1396,
+    "total_frames": 69800,
+    "detected_frames": 66564,
+    "detection_rate_pct": 95.36,
+    "fully_detected_windows": 1195,
+    "partially_detected_windows": 187,
+    "undetected_windows": 14,
+    "storage_mb": 22.93,
+    "validation_gate": "PASS"
+  },
+  "rtmpose": {
+    "name": "H3: RTMPose",
+    "total_windows": 1396,
+    "total_frames": 69800,
+    "detected_frames": 69797,
+    "detection_rate_pct": 100.0,
+    "fully_detected_windows": 1393,
+    "partially_detected_windows": 3,
+    "undetected_windows": 0,
+    "storage_mb": 24.16,
+    "validation_gate": "PASS"
+  }
+}
