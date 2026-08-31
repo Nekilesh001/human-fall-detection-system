@@ -37,6 +37,7 @@ sys.path.insert(0, ROOT_DIR)
 
 from src.infer_final_k1 import YOLOPoseExtractor, compute_165d_base_features, construct_187d_window_features
 from src.train_final_k1 import ModelK1_SpatialTCN
+from src.alert_manager import TelegramAlertManager
 
 class ApplicationStateMachine:
     """
@@ -88,66 +89,89 @@ class ApplicationStateMachine:
         
         # Spine verticality angle
         dx = (raw_33[12, 0] + raw_33[11, 0])/2.0 - (raw_33[24, 0] + raw_33[23, 0])/2.0
-        dy = mid_shoulder_y - mid_hip_y
+        dy = mid_hip_y - mid_shoulder_y
         spine_angle_deg = np.abs(np.degrees(np.arctan2(dx, dy + 1e-6)))
         
         # Posture geometry checks
         is_upright = (spine_angle_deg < 35.0) and (nose_y < mid_hip_y)
         is_sitting = (spine_angle_deg < 45.0) and (upper_leg_len / torso_len < 0.6) and (mid_hip_y < mid_ankle_y)
         
-        # Calculate recent velocity over buffer
-        recent_keypoints = buffer_50[-10:, :, :2]
-        vel = np.mean(np.abs(np.diff(recent_keypoints, axis=0)))
-        is_walking = is_upright and (vel > 0.015)
-
-        is_raw_fall = (prob_fall >= self.threshold)
-
-        # 3. State Machine Transition Logic
-        # EDGE-OF-FRAME PROTECTION: Suppress NEW fall activations if keypoints are clipped at frame boundary
-        if is_partial_person and not self.has_confirmed_fall:
-            self.consecutive_fall_count = 0
-            self.alert_active = False
-            self.current_state = "NORMAL — WALKING" if is_walking else ("NORMAL — STANDING" if is_upright else "NORMAL")
-        elif is_raw_fall:
-            self.consecutive_fall_count += 1
-            if self.consecutive_fall_count >= self.consecutive_required:
-                self.alert_active = True
-                self.has_confirmed_fall = True
-                self.getting_up_counter = 0
-                self.recovered_counter = 0
-                self.current_state = "FALL DETECTED"
+        # Check raw K1 binary prediction against official threshold
+        is_fall_window = (prob_fall >= self.threshold)
+        
+        if is_fall_window:
+            # Partial person edge guard: suppress NEW fall activations when keypoints are clipped at frame boundary
+            if is_partial_person and not self.has_confirmed_fall:
+                pass
             else:
-                if not self.has_confirmed_fall:
-                    self.current_state = "FALL SUSPECTED"
+                self.consecutive_fall_count += 1
         else:
-            # P(FALL) < threshold
-            self.consecutive_fall_count = max(0, self.consecutive_fall_count - 1)
+            self.consecutive_fall_count = 0
+
+        # State Transition Evaluator
+        if self.consecutive_fall_count >= self.consecutive_required:
+            self.alert_active = True
+            self.has_confirmed_fall = True
+            self.current_state = "FALL DETECTED"
+            self.getting_up_counter = 0
+            self.recovered_counter = 0
+        elif self.consecutive_fall_count > 0:
+            if not self.has_confirmed_fall:
+                self.current_state = "FALL SUSPECTED"
+        else:
+            # Evaluate posture geometry post-fall or normal
+            nose_y = raw_33[0, 1]
+            mid_shoulder_y = (raw_33[11, 1] + raw_33[12, 1]) / 2.0
+            mid_hip_y = (raw_33[23, 1] + raw_33[24, 1]) / 2.0
+            mid_knee_y = (raw_33[25, 1] + raw_33[26, 1]) / 2.0
+            mid_ankle_y = (raw_33[27, 1] + raw_33[28, 1]) / 2.0
+            
+            torso_len = abs(mid_hip_y - mid_shoulder_y) + 1e-6
+            upper_leg_len = abs(mid_knee_y - mid_hip_y) + 1e-6
+            
+            # Spine verticality angle
+            dx = (raw_33[12, 0] + raw_33[11, 0])/2.0 - (raw_33[24, 0] + raw_33[23, 0])/2.0
+            dy = mid_hip_y - mid_shoulder_y
+            spine_angle_deg = np.abs(np.degrees(np.arctan2(dx, dy + 1e-6)))
+            
+            # Posture geometry checks
+            is_upright = (spine_angle_deg < 35.0) and (nose_y < mid_hip_y)
+            is_sitting = (spine_angle_deg < 45.0) and (upper_leg_len / torso_len < 0.6) and (mid_hip_y < mid_ankle_y)
+            
+            # Calculate temporal velocity over buffer
+            if len(buffer_50) >= 5:
+                prev_pose = buffer_50[-5, :, :2]
+                curr_pose = raw_33[:, :2]
+                if np.sum(buffer_50[-5, :, 2]) > 0.5:
+                    vel = np.mean(np.abs(curr_pose - prev_pose))
+                else:
+                    vel = np.mean(np.abs(np.diff(buffer_50[-5:, :, 0], axis=0)))
+            else:
+                vel = 0.0
+
+            is_walking = is_upright and (vel > 0.015)
 
             if self.has_confirmed_fall:
-                if not is_upright:
-                    # Still low on floor -> FALLEN — ON FLOOR (Latched!)
-                    self.current_state = "FALLEN — ON FLOOR"
-                    self.getting_up_counter = 0
-                    self.recovered_counter = 0
-                else:
-                    # Upright posture detected after a fall -> GETTING UP / RECOVERY
+                if is_upright:
                     self.getting_up_counter += 1
-                    if self.getting_up_counter < 10:
+                    if self.getting_up_counter < 5:
                         self.current_state = "GETTING UP / RECOVERY"
                     else:
                         self.recovered_counter += 1
-                        self.current_state = "RECOVERED — STANDING"
-                        
-                        if self.recovered_counter >= 15:
-                            # Recovery sustained -> Reset fall latch
+                        if self.recovered_counter < 5:
+                            self.current_state = "RECOVERED — STANDING"
+                        else:
+                            self.current_state = "NORMAL — STANDING"
                             self.has_confirmed_fall = False
                             self.alert_active = False
-                            self.current_state = "NORMAL — STANDING"
                             self.getting_up_counter = 0
                             self.recovered_counter = 0
+                else:
+                    self.current_state = "FALLEN — ON FLOOR"
+                    self.getting_up_counter = 0
+                    self.recovered_counter = 0
             else:
                 self.alert_active = False
-                # Normal ADL Sub-Classification
                 if is_walking:
                     self.current_state = "NORMAL — WALKING"
                 elif is_sitting:
@@ -157,22 +181,23 @@ class ApplicationStateMachine:
                 else:
                     self.current_state = "NORMAL"
 
-        transition = f"{self.previous_state} -> {self.current_state}"
-        
+        return self._build_state_dict()
+
+    def _build_state_dict(self):
+        state_trans = f"{self.previous_state} -> {self.current_state}"
         return {
             "current_state": self.current_state,
             "previous_state": self.previous_state,
-            "state_transition": transition,
+            "state_transition": state_trans,
             "alert_active": self.alert_active,
-            "consecutive_fall_count": self.consecutive_fall_count,
-            "is_partial_person": is_partial_person,
-            "edge_reason": edge_reason
+            "has_confirmed_fall": self.has_confirmed_fall,
+            "consecutive_fall_count": self.consecutive_fall_count
         }
 
 
 class RealtimeFallDetector:
     """Production Real-Time Fall Detection Engine with Explicit Architecture Separation."""
-    def __init__(self, checkpoint_path=None, threshold_policy=0.3650, consecutive_fall_required=3):
+    def __init__(self, checkpoint_path=None, threshold_policy=0.3650, consecutive_fall_required=3, alert_manager=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.threshold_policy = threshold_policy
         self.extractor = YOLOPoseExtractor()
@@ -186,18 +211,22 @@ class RealtimeFallDetector:
         self.model.load_state_dict(torch.load(checkpoint_path, map_location=self.device, weights_only=True))
         self.model.eval()
 
-        # Buffering & State Machine
+        # Buffering, State Machine & SMS Alert Manager
         self.buffer_50 = np.zeros((50, 33, 3), dtype=np.float32)
         self.frames_buffered = 0
+        self.frame_count = 0
         self.state_machine = ApplicationStateMachine(
             consecutive_required=consecutive_fall_required,
             threshold=threshold_policy
         )
+        self.alert_manager = alert_manager if alert_manager is not None else SMSAlertManager()
         self.last_latency_ms = 0.0
         self.last_fps = 0.0
 
-    def process_frame(self, frame_bgr):
+    def process_frame(self, frame_bgr, video_name="Live Stream", fps_src=25.0):
         t_start = time.perf_counter()
+        self.frame_count += 1
+        timestamp_sec = self.frame_count / (fps_src if fps_src > 0 else 25.0)
         
         # 1. YOLO11-Pose Keypoint, Bounding Box & Edge-of-Frame Extraction
         raw_33, person_detected, bbox, coco_17_px, is_partial_person, edge_reason = self.extractor.extract_landmarks(frame_bgr)
@@ -246,6 +275,10 @@ class RealtimeFallDetector:
                 "previous_state": sm_res["previous_state"],
                 "state_transition": sm_res["state_transition"],
                 "alert_state": sm_res,
+                "sms_alert_enabled": self.alert_manager.enabled,
+                "sms_alert_sent": False,
+                "sms_alert_status": self.alert_manager.last_status,
+                "notification_event_type": "NONE",
                 "latency_ms": self.last_latency_ms,
                 "fps": self.last_fps,
                 "raw_33": raw_33,
@@ -271,6 +304,10 @@ class RealtimeFallDetector:
                 "previous_state": "WARMING UP",
                 "state_transition": "WARMING UP -> WARMING UP",
                 "alert_state": {"current_state": "WARMING UP", "previous_state": "WARMING UP", "state_transition": "WARMING UP -> WARMING UP", "alert_active": False, "consecutive_fall_count": 0},
+                "sms_alert_enabled": self.alert_manager.enabled,
+                "sms_alert_sent": False,
+                "sms_alert_status": self.alert_manager.last_status,
+                "notification_event_type": "NONE",
                 "latency_ms": self.last_latency_ms,
                 "fps": self.last_fps,
                 "raw_33": raw_33,
@@ -299,6 +336,33 @@ class RealtimeFallDetector:
             edge_reason=edge_reason
         )
 
+        # 6. Cellular SMS Alert Dispatcher (Authoritative State Machine Transitions)
+        prev_st = sm_res["previous_state"]
+        curr_st = sm_res["current_state"]
+        
+        sms_sent = False
+        sms_event = "NONE"
+
+        if prev_st != "FALL DETECTED" and curr_st == "FALL DETECTED":
+            sms_res = self.alert_manager.send_fall_alert(
+                prob_fall=prob_fall,
+                frame_index=self.frame_count,
+                timestamp_sec=timestamp_sec,
+                video_name=video_name
+            )
+            sms_event = "FALL_ALERT"
+            sms_sent = sms_res.get("sent", False)
+        elif prev_st == "GETTING UP / RECOVERY" and curr_st == "RECOVERED — STANDING":
+            sms_res = self.alert_manager.send_recovery_alert(
+                frame_index=self.frame_count,
+                timestamp_sec=timestamp_sec,
+                video_name=video_name
+            )
+            sms_event = "RECOVERY_ALERT"
+            sms_sent = sms_res.get("sent", False)
+        elif curr_st == "NORMAL — STANDING" and not self.state_machine.has_confirmed_fall:
+            self.alert_manager.reset_latch()
+
         t_end = time.perf_counter()
         self.last_latency_ms = (t_end - t_start) * 1000.0
         self.last_fps = 1000.0 / self.last_latency_ms if self.last_latency_ms > 0 else 0.0
@@ -316,6 +380,10 @@ class RealtimeFallDetector:
             "previous_state": sm_res["previous_state"],
             "state_transition": sm_res["state_transition"],
             "alert_state": sm_res,
+            "sms_alert_enabled": self.alert_manager.enabled,
+            "sms_alert_sent": sms_sent,
+            "sms_alert_status": self.alert_manager.last_status,
+            "notification_event_type": sms_event,
             "latency_ms": self.last_latency_ms,
             "fps": self.last_fps,
             "raw_33": raw_33,

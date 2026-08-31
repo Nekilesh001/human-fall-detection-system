@@ -93,3 +93,28 @@ Every evaluated window records:
 
 > **SCIENTIFIC & ENGINEERING HONESTY NOTICE**:  
 > Model K1 is a binary supervised fall detector outputting $P(\text{FALL})$. Standing, walking, sitting, fallen, recovery, and recovered states are application-level interpretations derived from YOLO Pose observations, K1 fall probability, and temporal state-machine logic. They are not independent classes learned by the K1 neural network.
+
+---
+
+## 6. Streamlit Display Controls & Visual Quality Architecture
+
+### Display Controls Sidebar Toggles (All Default ON)
+- **`[ON/OFF] Show Person Bounding Box`**: Controls rendering of the tight person bounding box `[x1, y1, x2, y2]` around the detected person coordinates.
+- **`[ON/OFF] Show Pose Skeleton`**: Controls rendering of connecting cyan skeleton lines between 17 COCO keypoint pairs.
+- **`[ON/OFF] Show Keypoints`**: Controls rendering of red joint dots on body keypoints.
+- **`[ON/OFF] Show Application Status Text`**: Controls status text (`NORMAL — STANDING`, `FALL DETECTED`, etc.) inside the overlay badge.
+- **`[ON/OFF] Show ML Information`**: Controls ML probability and raw decision (`P(FALL): 92.4% | ML: FALL`) inside the overlay badge.
+- **`[ON/OFF] Show Alert Perimeter`**: Controls the 12-pixel red perimeter border flash around the **entire video frame** during active alerts.
+- **`🔄 Reset Display Settings Button`**: Restores all 6 toggles to ON, Render Quality to High, and sliders to default values.
+
+### Visual Quality Controls
+- **`Render Quality`**: Preset options (`Low`, `Medium`, `High`).
+- **`Bounding Box Thickness`**: Slider (1px to 5px).
+- **`Skeleton Thickness`**: Slider (1px to 5px).
+- **`Keypoint Size`**: Slider (1px to 6px radius).
+- **`Text Scale`**: Slider (0.30 to 0.80 font scale).
+
+### Strict Conceptual Isolation
+> **PRESENTATION VS. INFERENCE ISOLATION**:  
+> All display toggles and quality sliders affect **PRESENTATION ONLY**. They do NOT alter YOLO keypoint extraction, Model K1 forward pass tensors, $P(\text{FALL})$, decision threshold $\tau = 0.3650$, application state transitions, alert activations, or CSV prediction logs.
+

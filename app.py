@@ -3,12 +3,13 @@ HUMAN FALL DETECTION SYSTEM — STAGE F5 PRODUCTION STREAMLIT WEB APPLICATION
 
 Phase F5 Architectural Update: Explicit Separation of Model K1 Output vs. Application State Machine
 + Dynamic Non-Overlapping Video HUD & High-Quality Anti-Aliased Skeletal Visualization
++ Independent Display & Visual Quality Control Settings
 
 Model K1 Output:
 - fall_probability = P(FALL)
 - raw_model_prediction = NORMAL or FALL @ tau=0.3650
 
-Application State Machine (10 Derived States):
+Application State Machine (11 Derived States):
 1. WARMING UP
 2. NORMAL — STANDING
 3. NORMAL — WALKING
@@ -39,6 +40,7 @@ ROOT_DIR = r"d:\ONE_DATA\Fall detection"
 sys.path.insert(0, ROOT_DIR)
 
 from src.final_k1_realtime_inference import RealtimeFallDetector, ApplicationStateMachine
+from src.sms_alert_manager import SMSAlertManager
 
 COCO_SKELETON_PAIRS = [
     (0, 1), (0, 2), (1, 3), (2, 4),      # Facial connections
@@ -85,10 +87,22 @@ def compute_hud_corner_position(w_img, h_img, bbox, hud_w=240, hud_h=55):
     return corners[preferred[0]]
 
 
-def draw_yolo_person_overlay(img_bgr, bbox, coco_17_px, current_state, prob_fall, threshold, raw_decision, is_partial_person=False):
+def draw_yolo_person_overlay(
+    img_bgr, bbox, coco_17_px, current_state, prob_fall, threshold, raw_decision,
+    is_partial_person=False,
+    show_bbox=True,
+    show_skeleton=True,
+    show_keypoints=True,
+    show_status_text=True,
+    show_ml_info=True,
+    bbox_thickness=2,
+    skeleton_thickness=1,
+    keypoint_size=2,
+    text_scale=0.45
+):
     """
     Renders clean tight YOLO person bounding box, high-quality anti-aliased 17-keypoint skeleton,
-    and dynamically positioned non-overlapping video HUD.
+    and dynamically positioned non-overlapping video HUD with independent display toggles.
     """
     h_img, w_img = img_bgr.shape[:2]
     
@@ -108,52 +122,62 @@ def draw_yolo_person_overlay(img_bgr, bbox, coco_17_px, current_state, prob_fall
     }
     box_color = state_bgr.get(current_state, (0, 255, 0))
 
-    # 1. Person Bounding Box & High-Quality Anti-Aliased Skeleton
-    if bbox is not None and len(bbox) == 4:
+    # 1. Person Bounding Box & High-Quality Anti-Aliased Skeleton (On Detected Person Only)
+    if bbox is not None and len(bbox) == 4 and current_state != "NO PERSON DETECTED":
         x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
         
-        # Tight Person Bounding Box (2px smooth stroke)
-        cv2.rectangle(img_bgr, (x1, y1), (x2, y2), box_color, 2, cv2.LINE_AA)
-        
-        # Person Box Identification Label Tag (Top-Left of Person Box)
-        tag_text = "PERSON | Pose Detected" if not is_partial_person else "PERSON | Edge Clipped"
-        lbl_y = max(15, y1 - 6)
-        cv2.putText(img_bgr, tag_text, (x1, lbl_y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 2, cv2.LINE_AA)
-        cv2.putText(img_bgr, tag_text, (x1, lbl_y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+        # Tight Person Bounding Box (Only around detected person)
+        if show_bbox:
+            cv2.rectangle(img_bgr, (x1, y1), (x2, y2), box_color, bbox_thickness, cv2.LINE_AA)
+            
+            # Person Box Identification Label Tag (Top-Left of Person Box)
+            tag_text = "PERSON | Pose Detected" if not is_partial_person else "PERSON | Edge Clipped"
+            lbl_y = max(15, y1 - 6)
+            cv2.putText(img_bgr, tag_text, (x1, lbl_y), cv2.FONT_HERSHEY_SIMPLEX, text_scale * 0.9, (0, 0, 0), 2, cv2.LINE_AA)
+            cv2.putText(img_bgr, tag_text, (x1, lbl_y), cv2.FONT_HERSHEY_SIMPLEX, text_scale * 0.9, (255, 255, 255), 1, cv2.LINE_AA)
         
         # Draw 17 COCO Keypoints & Skeleton Lines
         if coco_17_px is not None and len(coco_17_px) == 17:
-            # Thin, smooth cyan skeleton lines (1px, LINE_AA)
-            for p1_idx, p2_idx in COCO_SKELETON_PAIRS:
-                if p1_idx < len(coco_17_px) and p2_idx < len(coco_17_px):
-                    x_a, y_a, conf_a = coco_17_px[p1_idx]
-                    x_b, y_b, conf_b = coco_17_px[p2_idx]
-                    if conf_a > 0.3 and conf_b > 0.3:
-                        cv2.line(img_bgr, (int(x_a), int(y_a)), (int(x_b), int(y_b)), (255, 255, 0), 1, cv2.LINE_AA)
+            # Thin, smooth cyan skeleton lines
+            if show_skeleton:
+                for p1_idx, p2_idx in COCO_SKELETON_PAIRS:
+                    if p1_idx < len(coco_17_px) and p2_idx < len(coco_17_px):
+                        x_a, y_a, conf_a = coco_17_px[p1_idx]
+                        x_b, y_b, conf_b = coco_17_px[p2_idx]
+                        if conf_a > 0.3 and conf_b > 0.3:
+                            cv2.line(img_bgr, (int(x_a), int(y_a)), (int(x_b), int(y_b)), (255, 255, 0), skeleton_thickness, cv2.LINE_AA)
             
-            # Small, crisp red joint dots (radius 2px, LINE_AA)
-            for kp in coco_17_px:
-                x_k, y_k, conf_k = kp
-                if conf_k > 0.3:
-                    cv2.circle(img_bgr, (int(x_k), int(y_k)), 2, (0, 0, 255), -1, cv2.LINE_AA)
+            # Small, crisp red joint dots
+            if show_keypoints:
+                for kp in coco_17_px:
+                    x_k, y_k, conf_k = kp
+                    if conf_k > 0.3:
+                        cv2.circle(img_bgr, (int(x_k), int(y_k)), keypoint_size, (0, 0, 255), -1, cv2.LINE_AA)
 
-    # 2. Dynamic Non-Overlapping Video HUD Badge Placement
-    hud_w, hud_h = 240, 52
-    hx, hy = compute_hud_corner_position(w_img, h_img, bbox, hud_w=hud_w, hud_h=hud_h)
-    
-    # Semi-transparent HUD overlay background
-    overlay = img_bgr.copy()
-    cv2.rectangle(overlay, (hx, hy), (hx + hud_w, hy + hud_h), (15, 23, 42), -1)
-    cv2.addWeighted(overlay, 0.75, img_bgr, 0.25, 0, img_bgr)
-    cv2.rectangle(img_bgr, (hx, hy), (hx + hud_w, hy + hud_h), box_color, 1, cv2.LINE_AA)
-    
-    # Concise Video HUD Text Inside Overlay Box
-    edge_str = " [EDGE]" if is_partial_person else ""
-    hud_line1 = f"{current_state}{edge_str}"
-    hud_line2 = f"P(FALL): {prob_fall*100:4.1f}% | ML: {raw_decision}" if current_state != "NO PERSON DETECTED" else "No Reliable Pose Available"
-    
-    cv2.putText(img_bgr, hud_line1, (hx + 8, hy + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.45, box_color, 1, cv2.LINE_AA)
-    cv2.putText(img_bgr, hud_line2, (hx + 8, hy + 42), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (220, 220, 220), 1, cv2.LINE_AA)
+    # 2. Dynamic Non-Overlapping Video HUD Overlay Badge
+    if show_status_text or show_ml_info:
+        hud_scale_ratio = text_scale / 0.45
+        hud_w, hud_h = int(240 * hud_scale_ratio), int(52 * hud_scale_ratio)
+        hx, hy = compute_hud_corner_position(w_img, h_img, bbox if current_state != "NO PERSON DETECTED" else None, hud_w=hud_w, hud_h=hud_h)
+        
+        # Semi-transparent HUD overlay background
+        overlay = img_bgr.copy()
+        cv2.rectangle(overlay, (hx, hy), (hx + hud_w, hy + hud_h), (15, 23, 42), -1)
+        cv2.addWeighted(overlay, 0.75, img_bgr, 0.25, 0, img_bgr)
+        cv2.rectangle(img_bgr, (hx, hy), (hx + hud_w, hy + hud_h), box_color, 1, cv2.LINE_AA)
+        
+        # Video HUD Text Inside Overlay Box
+        edge_str = " [EDGE]" if is_partial_person else ""
+        hud_line1 = f"{current_state}{edge_str}" if show_status_text else ""
+        hud_line2 = (f"P(FALL): {prob_fall*100:4.1f}% | ML: {raw_decision}" if current_state != "NO PERSON DETECTED" else "No Reliable Pose Available") if show_ml_info else ""
+        
+        if show_status_text and show_ml_info:
+            cv2.putText(img_bgr, hud_line1, (hx + 8, hy + int(20 * hud_scale_ratio)), cv2.FONT_HERSHEY_SIMPLEX, text_scale, box_color, 1, cv2.LINE_AA)
+            cv2.putText(img_bgr, hud_line2, (hx + 8, hy + int(42 * hud_scale_ratio)), cv2.FONT_HERSHEY_SIMPLEX, text_scale * 0.93, (220, 220, 220), 1, cv2.LINE_AA)
+        elif show_status_text:
+            cv2.putText(img_bgr, hud_line1, (hx + 8, hy + int(32 * hud_scale_ratio)), cv2.FONT_HERSHEY_SIMPLEX, text_scale * 1.1, box_color, 1, cv2.LINE_AA)
+        elif show_ml_info:
+            cv2.putText(img_bgr, hud_line2, (hx + 8, hy + int(32 * hud_scale_ratio)), cv2.FONT_HERSHEY_SIMPLEX, text_scale * 0.95, (220, 220, 220), 1, cv2.LINE_AA)
 
     return img_bgr
 
@@ -291,11 +315,64 @@ STREAMLIT_OUTPUT_DIR = os.path.join(ROOT_DIR, "R&D", "ML_Baseline", "results", "
 DEVICE_NAME = "cuda (NVIDIA RTX 4060 GPU)" if torch.cuda.is_available() else "CPU Execution"
 
 # ---------------------------------------------------------------------------
-# Sidebar UI Layout — Clear Separation of ML Model Output vs Application State
+# Session State Initialization & Reset Handler
+# ---------------------------------------------------------------------------
+def reset_display_settings():
+    st.session_state.show_bbox = True
+    st.session_state.show_skeleton = True
+    st.session_state.show_keypoints = True
+    st.session_state.show_status_text = True
+    st.session_state.show_ml_info = True
+    st.session_state.show_alert_perimeter = True
+    st.session_state.render_quality = "High"
+    st.session_state.bbox_thickness = 2
+    st.session_state.skeleton_thickness = 1
+    st.session_state.keypoint_size = 2
+    st.session_state.text_scale = 0.45
+
+defaults = [
+    ("show_bbox", True),
+    ("show_skeleton", True),
+    ("show_keypoints", True),
+    ("show_status_text", True),
+    ("show_ml_info", True),
+    ("show_alert_perimeter", True),
+    ("render_quality", "High"),
+    ("bbox_thickness", 2),
+    ("skeleton_thickness", 1),
+    ("keypoint_size", 2),
+    ("text_scale", 0.45)
+]
+for k, v in defaults:
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# ---------------------------------------------------------------------------
+# Sidebar UI Layout — Display Controls, Quality Settings & Telemetry
 # ---------------------------------------------------------------------------
 st.sidebar.title("🛡️ System Control & Telemetry")
 st.sidebar.markdown("---")
 
+st.sidebar.markdown("### 🎨 DISPLAY CONTROLS")
+st.sidebar.checkbox("Show Person Bounding Box", key="show_bbox")
+st.sidebar.checkbox("Show Pose Skeleton", key="show_skeleton")
+st.sidebar.checkbox("Show Keypoints", key="show_keypoints")
+st.sidebar.checkbox("Show Application Status Text", key="show_status_text")
+st.sidebar.checkbox("Show ML Information", key="show_ml_info")
+st.sidebar.checkbox("Show Alert Perimeter", key="show_alert_perimeter")
+
+st.sidebar.button("🔄 Reset Display Settings", on_click=reset_display_settings, use_container_width=True)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🎛️ VISUAL QUALITY")
+st.sidebar.selectbox("Render Quality", ["Low", "Medium", "High"], key="render_quality")
+
+st.sidebar.slider("Bounding Box Thickness", 1, 5, key="bbox_thickness")
+st.sidebar.slider("Skeleton Thickness", 1, 5, key="skeleton_thickness")
+st.sidebar.slider("Keypoint Size (px)", 1, 6, key="keypoint_size")
+st.sidebar.slider("Text Scale", 0.30, 0.80, key="text_scale", step=0.05)
+
+st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 ML MODEL K1 SPECIFICATION")
 st.sidebar.text_input("Checkpoint Path", value=PRODUCTION_CHECKPOINT, disabled=True)
 st.sidebar.number_input("Decision Threshold (τ)", value=PRODUCTION_THRESHOLD, format="%.4f", disabled=True,
@@ -305,10 +382,17 @@ st.sidebar.text_input("Temporal Window", value="50 Frames (2.0s Context)", disab
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🧠 APPLICATION STATE ENGINE")
-st.sidebar.text_input("State Machine Engine", value="10 Derived Application States", disabled=True)
+st.sidebar.text_input("State Machine Engine", value="11 Derived Application States", disabled=True)
 st.sidebar.text_input("Alert Stabilization", value="3 Consecutive FALL Windows", disabled=True)
-st.sidebar.text_input("Edge-of-Frame Protection", value="Active Boundary Boundary Guard", disabled=True)
+st.sidebar.text_input("Edge-of-Frame Protection", value="Active Boundary Guard", disabled=True)
 st.sidebar.text_input("Execution Device", value=DEVICE_NAME, disabled=True)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📱 CELLULAR SMS PHONE ALERTS")
+sms_mgr_side = SMSAlertManager()
+st.sidebar.text_input("Twilio Account SID (Masked)", value=sms_mgr_side.get_masked_account_sid(), disabled=True)
+st.sidebar.text_input("Destination Number (Masked)", value=sms_mgr_side.get_masked_to_number(), disabled=True)
+st.sidebar.text_input("SMS Service Status", value="CONFIGURED & READY" if sms_mgr_side.is_configured() else ("DISABLED" if not sms_mgr_side.enabled else "NOT_CONFIGURED"), disabled=True)
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Human Fall Detection System — Research & Engineering Demonstration Platform")
@@ -317,7 +401,7 @@ st.sidebar.caption("Human Fall Detection System — Research & Engineering Demon
 # Main Page Header & Disclaimer
 # ---------------------------------------------------------------------------
 st.markdown('<div class="main-title">Human Fall Detection System</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Phase F5 Production Streamlit Testing Application | 10-State Application Machine</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Phase F5 Production Streamlit Testing Application | 11-State Application Machine</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="disclaimer-box">
@@ -433,7 +517,7 @@ if uploaded_file is not None:
             timestamp_sec = frame_idx / fps_src
             progress_bar.progress(min(1.0, frame_idx / max(1, total_frames)))
 
-            # Execute Engine Inference
+            # Execute Engine Inference (ML & State Machine unaltered)
             result = detector.process_frame(frame_bgr)
 
             is_warmed = result["is_warmed_up"]
@@ -451,10 +535,20 @@ if uploaded_file is not None:
             bbox = result.get("bbox", None)
             coco_17_px = result.get("coco_17_px", None)
 
-            # Render High-Quality Anti-Aliased Skeleton, Bounding Box & Dynamic Corner HUD
+            # Render Overlay based on User Display Toggles & Quality Settings
             annotated_bgr = frame_bgr.copy()
             annotated_bgr = draw_yolo_person_overlay(
-                annotated_bgr, bbox, coco_17_px, current_state, prob_fall, PRODUCTION_THRESHOLD, raw_decision, is_partial_person
+                annotated_bgr, bbox, coco_17_px, current_state, prob_fall, PRODUCTION_THRESHOLD, raw_decision,
+                is_partial_person=is_partial_person,
+                show_bbox=st.session_state.show_bbox,
+                show_skeleton=st.session_state.show_skeleton,
+                show_keypoints=st.session_state.show_keypoints,
+                show_status_text=st.session_state.show_status_text,
+                show_ml_info=st.session_state.show_ml_info,
+                bbox_thickness=st.session_state.bbox_thickness,
+                skeleton_thickness=st.session_state.skeleton_thickness,
+                keypoint_size=st.session_state.keypoint_size,
+                text_scale=st.session_state.text_scale
             )
 
             # Convert to RGB for Streamlit Display
@@ -469,7 +563,7 @@ if uploaded_file is not None:
             """
             model_out_placeholder.markdown(model_html, unsafe_allow_html=True)
 
-            # Render Status Indicator Banner for all 10 states
+            # Render Status Indicator Banner for all 11 states
             if current_state == "NO PERSON DETECTED":
                 status_html = '<div class="status-noperson">👤 NO PERSON DETECTED IN FRAME</div>'
             elif current_state == "WARMING UP":
@@ -495,8 +589,8 @@ if uploaded_file is not None:
 
             status_placeholder.markdown(status_html, unsafe_allow_html=True)
 
-            # Full-Video Red Border Flash on Active Alert (Perimeter Alert Indicator)
-            if is_warmed and alert_state["alert_active"]:
+            # Full-Video Red Border Flash on Active Alert (Controlled by show_alert_perimeter)
+            if is_warmed and alert_state["alert_active"] and st.session_state.show_alert_perimeter:
                 cv2.rectangle(disp_rgb, (0, 0), (w_f, h_f), (255, 0, 0), 12)
 
             frame_placeholder.image(disp_rgb, channels="RGB", use_container_width=True)
@@ -542,6 +636,10 @@ if uploaded_file is not None:
                 "current_application_state": current_state,
                 "state_transition": state_transition,
                 "consecutive_fall_count": alert_state["consecutive_fall_count"],
+                "sms_alert_enabled": result.get("sms_alert_enabled", False),
+                "sms_alert_sent": result.get("sms_alert_sent", False),
+                "sms_alert_status": result.get("sms_alert_status", "DISABLED"),
+                "notification_event_type": result.get("notification_event_type", "NONE"),
                 "latency_ms": round(lat_ms, 2),
                 "processing_fps": round(proc_fps, 2)
             })
