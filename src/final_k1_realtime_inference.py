@@ -398,3 +398,241 @@ class RealtimeFallDetector:
             consecutive_required=3,
             threshold=self.threshold_policy
         )
+
+def compute_iou(box1, box2):
+    if box1 is None or box2 is None:
+        return 0.0
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+
+    intersection = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+    area1 = max(0.0, box1[2] - box1[0]) * max(0.0, box1[3] - box1[1])
+    area2 = max(0.0, box2[2] - box2[0]) * max(0.0, box2[3] - box2[1])
+    union = area1 + area2 - intersection + 1e-6
+    return float(intersection / union)
+
+class TrackedPersonState:
+    def __init__(self, person_id, bbox, raw_33, coco_17_px, is_partial_person, edge_reason, threshold_policy=0.3650):
+        self.person_id = person_id
+        self.bbox = bbox
+        self.raw_33 = raw_33
+        self.coco_17_px = coco_17_px
+        self.is_partial_person = is_partial_person
+        self.edge_reason = edge_reason
+        self.threshold_policy = threshold_policy
+        
+        self.buffer_50 = np.zeros((50, 33, 3), dtype=np.float32)
+        self.frames_buffered = 0
+        self.state_machine = ApplicationStateMachine(consecutive_required=3, threshold=threshold_policy)
+        self.prob_fall = 0.0
+        self.raw_decision = "WARMING UP"
+        self.alert_state = {}
+        self.missed_frames = 0
+        self.last_seen_frame = 0
+
+class PersonTracker:
+    def __init__(self, max_age=30, iou_threshold=0.30):
+        self.tracks = {}  # person_id -> TrackedPersonState
+        self.next_id = 1
+        self.max_age = max_age
+        self.iou_threshold = iou_threshold
+        self.frame_index = 0
+
+    def update(self, candidates, threshold_policy=0.3650):
+        self.frame_index += 1
+        matched_track_ids = set()
+        matched_cand_indices = set()
+
+        track_ids = list(self.tracks.keys())
+        
+        # Greedy IoU matching
+        if len(track_ids) > 0 and len(candidates) > 0:
+            iou_matrix = np.zeros((len(track_ids), len(candidates)), dtype=np.float32)
+            for i, t_id in enumerate(track_ids):
+                for j, cand in enumerate(candidates):
+                    iou_matrix[i, j] = compute_iou(self.tracks[t_id].bbox, cand["bbox"])
+            
+            while True:
+                if iou_matrix.size == 0:
+                    break
+                max_val = np.max(iou_matrix)
+                if max_val < self.iou_threshold:
+                    break
+                i, j = np.unravel_index(np.argmax(iou_matrix), iou_matrix.shape)
+                t_id = track_ids[i]
+                
+                if t_id not in matched_track_ids and j not in matched_cand_indices:
+                    cand = candidates[j]
+                    tr = self.tracks[t_id]
+                    tr.bbox = cand["bbox"]
+                    tr.raw_33 = cand["raw_33"]
+                    tr.coco_17_px = cand["coco_17_px"]
+                    tr.is_partial_person = cand["is_partial_person"]
+                    tr.edge_reason = cand["edge_reason"]
+                    tr.missed_frames = 0
+                    tr.last_seen_frame = self.frame_index
+                    
+                    matched_track_ids.add(t_id)
+                    matched_cand_indices.add(j)
+
+                iou_matrix[i, :] = -1.0
+                iou_matrix[:, j] = -1.0
+
+        # Unmatched tracks
+        for t_id, tr in list(self.tracks.items()):
+            if t_id not in matched_track_ids:
+                tr.missed_frames += 1
+                if tr.missed_frames > self.max_age:
+                    del self.tracks[t_id]
+
+        # New candidates -> Spawn new person_id tracks
+        for j, cand in enumerate(candidates):
+            if j not in matched_cand_indices:
+                new_id = self.next_id
+                self.next_id += 1
+                tr = TrackedPersonState(
+                    person_id=new_id,
+                    bbox=cand["bbox"],
+                    raw_33=cand["raw_33"],
+                    coco_17_px=cand["coco_17_px"],
+                    is_partial_person=cand["is_partial_person"],
+                    edge_reason=cand["edge_reason"],
+                    threshold_policy=threshold_policy
+                )
+                tr.last_seen_frame = self.frame_index
+                self.tracks[new_id] = tr
+
+        return list(self.tracks.values())
+
+class MultiPersonFallDetector:
+    def __init__(self, checkpoint_path=None, threshold_policy=0.3650, device=None):
+        if checkpoint_path is None:
+            checkpoint_path = os.path.join(ROOT_DIR, "checkpoints", "final_k1", "final_production.pth")
+        
+        self.checkpoint_path = checkpoint_path
+        self.threshold_policy = threshold_policy
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        
+        from src.infer_final_k1 import YOLOPoseExtractor, compute_165d_base_features, construct_187d_window_features
+        from src.train_final_k1 import ModelK1_SpatialTCN
+        
+        self._compute_base = compute_165d_base_features
+        self._construct_187 = construct_187d_window_features
+        
+        self.extractor = YOLOPoseExtractor()
+        self.model = ModelK1_SpatialTCN(in_channels=187, num_classes=2).to(self.device)
+        
+        state_dict = torch.load(self.checkpoint_path, map_location=self.device)
+        self.model.load_state_dict(state_dict)
+        self.model.eval()
+        
+        self.tracker = PersonTracker(max_age=30, iou_threshold=0.30)
+        self.alert_manager = SMSAlertManager()
+        self.frame_count = 0
+
+    def process_frame(self, frame_bgr, video_name="Live Stream", fps_src=25.0):
+        t_start = time.perf_counter()
+        self.frame_count += 1
+        timestamp_sec = self.frame_count / float(fps_src)
+
+        candidates = self.extractor.extract_multi_person_landmarks(frame_bgr)
+        active_tracks = self.tracker.update(candidates, threshold_policy=self.threshold_policy)
+
+        track_results = []
+        for tr in active_tracks:
+            # 1. Roll person's independent 50-frame buffer
+            tr.buffer_50 = np.roll(tr.buffer_50, -1, axis=0)
+            tr.buffer_50[-1] = tr.raw_33
+            tr.frames_buffered = min(50, tr.frames_buffered + 1)
+
+            if tr.frames_buffered < 50:
+                sm_res = tr.state_machine.update(
+                    prob_fall=0.0,
+                    person_detected=True,
+                    raw_33=tr.raw_33,
+                    buffer_50=tr.buffer_50,
+                    is_partial_person=tr.is_partial_person,
+                    edge_reason=tr.edge_reason
+                )
+                track_results.append({
+                    "person_id": tr.person_id,
+                    "bbox": tr.bbox,
+                    "coco_17_px": tr.coco_17_px,
+                    "raw_33": tr.raw_33,
+                    "is_warmed_up": False,
+                    "prob_fall": 0.0,
+                    "raw_decision": "WARMING UP",
+                    "current_state": sm_res["current_state"],
+                    "previous_state": sm_res["previous_state"],
+                    "state_transition": sm_res["state_transition"],
+                    "is_partial_person": tr.is_partial_person,
+                    "edge_reason": tr.edge_reason
+                })
+                continue
+
+            # 2. Independent K1 forward pass per person
+            base_165 = self._compute_base(tr.buffer_50)
+            feat_187 = self._construct_187(base_165)
+            tensor_x = torch.tensor(feat_187, dtype=torch.float32).unsqueeze(0).to(self.device)
+
+            with torch.no_grad():
+                out = self.model(tensor_x)
+                prob_fall = torch.softmax(out, dim=1)[0, 1].item()
+
+            tr.prob_fall = prob_fall
+            tr.raw_decision = "FALL" if prob_fall >= self.threshold_policy else "NORMAL"
+
+            # 3. Independent ApplicationStateMachine update per person
+            sm_res = tr.state_machine.update(
+                prob_fall=prob_fall,
+                person_detected=True,
+                raw_33=tr.raw_33,
+                buffer_50=tr.buffer_50,
+                is_partial_person=tr.is_partial_person,
+                edge_reason=tr.edge_reason
+            )
+
+            # 4. Per-Person SMS Alert Dispatcher
+            prev_st = sm_res["previous_state"]
+            curr_st = sm_res["current_state"]
+            if prev_st != "FALL DETECTED" and curr_st == "FALL DETECTED":
+                self.alert_manager.send_fall_alert(
+                    prob_fall=prob_fall,
+                    frame_index=self.frame_count,
+                    timestamp_sec=timestamp_sec,
+                    video_name=f"{video_name} (Person #{tr.person_id})"
+                )
+            elif prev_st == "GETTING UP / RECOVERY" and curr_st == "RECOVERED — STANDING":
+                self.alert_manager.send_recovery_alert(
+                    frame_index=self.frame_count,
+                    timestamp_sec=timestamp_sec,
+                    video_name=f"{video_name} (Person #{tr.person_id})"
+                )
+
+            track_results.append({
+                "person_id": tr.person_id,
+                "bbox": tr.bbox,
+                "coco_17_px": tr.coco_17_px,
+                "raw_33": tr.raw_33,
+                "is_warmed_up": True,
+                "prob_fall": prob_fall,
+                "raw_decision": tr.raw_decision,
+                "current_state": sm_res["current_state"],
+                "previous_state": sm_res["previous_state"],
+                "state_transition": sm_res["state_transition"],
+                "is_partial_person": tr.is_partial_person,
+                "edge_reason": tr.edge_reason
+            })
+
+        t_end = time.perf_counter()
+        lat_ms = (t_end - t_start) * 1000.0
+        fps = 1000.0 / lat_ms if lat_ms > 0 else 0.0
+
+        return {
+            "num_people_detected": len(track_results),
+            "track_results": track_results,
+            "latency_ms": lat_ms,
+            "fps": fps
+        }

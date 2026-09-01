@@ -1,0 +1,44 @@
+{
+  "investigation_target": "video (47).avi (Coffee_room_01)",
+  "investigation_date": "2026-08-28",
+  "model_checkpoint": "checkpoints/final_k1/final_production.pth",
+  "decision_threshold_tau": 0.3650,
+  "user_hypothesis": "Unexpected false-positive alert in a normal ADL video",
+  "investigation_finding": "DISPROVED / CLARIFIED — video (47).avi is an ACTUAL FALL EVENT VIDEO in Le2i Coffee_room_01",
+  "ground_truth_annotation": {
+    "annotation_file": "Le2i/data/Coffee_room_01/Coffee_room_01/Annotation_files/video (47).txt",
+    "f_start": 625,
+    "f_end": 658,
+    "annotated_state_625_to_658": "Fall event transition and posture collapse"
+  },
+  "sequence_analysis_around_frame_636": [
+    {"frame": 630, "p_fall": 0.0000, "raw_pred": 0, "stabilized": 0, "state": "NORMAL", "consecutive": 0},
+    {"frame": 631, "p_fall": 0.0000, "raw_pred": 0, "stabilized": 0, "state": "NORMAL", "consecutive": 0},
+    {"frame": 632, "p_fall": 0.0001, "raw_pred": 0, "stabilized": 0, "state": "NORMAL", "consecutive": 0},
+    {"frame": 633, "p_fall": 0.2715, "raw_pred": 0, "stabilized": 0, "state": "NORMAL", "consecutive": 0},
+    {"frame": 634, "p_fall": 0.9289, "raw_pred": 1, "stabilized": 0, "state": "WARMUP_RECOVERY", "consecutive": 1},
+    {"frame": 635, "p_fall": 0.9857, "raw_pred": 1, "stabilized": 0, "state": "WARMUP_RECOVERY", "consecutive": 2},
+    {"frame": 636, "p_fall": 0.9922, "raw_pred": 1, "stabilized": 1, "state": "ALERT", "consecutive": 3},
+    {"frame": 637, "p_fall": 0.9940, "raw_pred": 1, "stabilized": 1, "state": "ALERT", "consecutive": 4},
+    {"frame": 640, "p_fall": 0.9999, "raw_pred": 1, "stabilized": 1, "state": "ALERT", "consecutive": 7}
+  ],
+  "answers_to_10_investigation_questions": {
+    "1_exact_alert_frame": "Frame 636 (Timestamp: 25.44s)",
+    "2_p_fall_range_around_alert": "0.0000 -> 0.2715 (frame 633) -> 0.9289 (frame 634) -> 0.9857 (frame 635) -> 0.9922 (frame 636)",
+    "3_decision_threshold": 0.3650,
+    "4_consecutive_fall_windows_required": 3,
+    "5_sequence_duration_sec": 3.72,
+    "6_confidence_level": "High-confidence FALL predictions (P(FALL) > 0.9289, peaking at 0.9999)",
+    "7_human_action_correspondence": "Matches actual ground-truth fall event in Le2i Coffee_room_01 video (47) at frames 625-658",
+    "8_yolo_keypoint_behavior": "Normal posture tracking during upright walking (frames 1-624, P=0.0000); rapid downward velocity and inclination change at frame 625",
+    "9_comparison_with_video_1": "Identical behavior — both video (1) and video (47) trigger high-confidence alerts (P > 0.95) within 3 windows of fall impact",
+    "10_failure_mode_verdict": "NOT A FAILURE MODE — True Positive detection of a ground-truth fall event"
+  },
+  "adl_walking_period_frames_1_to_624": {
+    "total_frames": 624,
+    "raw_fall_windows": 0,
+    "alert_activations": 0,
+    "p_fall_mean": 0.0000,
+    "status": "100% PERFECT ADL REJECTION"
+  }
+}

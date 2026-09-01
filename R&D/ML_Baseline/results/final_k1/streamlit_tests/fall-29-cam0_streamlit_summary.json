@@ -1,0 +1,17 @@
+{
+  "video_name": "fall-29-cam0.mp4",
+  "total_frames": 99,
+  "evaluated_windows": 50,
+  "warmup_frames": 49,
+  "duration_sec": 3.3,
+  "mean_fps": 44.0,
+  "mean_latency_ms": 22.73,
+  "p95_latency_ms": 28.58,
+  "raw_fall_windows": 28,
+  "stabilized_fall_windows": 26,
+  "alert_events": 1,
+  "first_alert_frame": 74,
+  "first_alert_time_sec": 2.47,
+  "production_threshold": 0.365,
+  "saved_csv_log": "d:\\ONE_DATA\\Fall detection\\R&D\\ML_Baseline\\results\\final_k1\\streamlit_tests\\fall-29-cam0_streamlit_log.csv"
+}

@@ -1,0 +1,17 @@
+{
+  "video_name": "video (16).avi",
+  "total_frames": 264,
+  "evaluated_windows": 264,
+  "warmup_frames": 49,
+  "duration_sec": 11.0,
+  "mean_fps": 45.12,
+  "mean_latency_ms": 22.16,
+  "p95_latency_ms": 29.88,
+  "raw_fall_windows": 71,
+  "stabilized_fall_windows": 65,
+  "alert_events": 1,
+  "first_alert_frame": 200,
+  "first_alert_time_sec": 8.33,
+  "production_threshold": 0.365,
+  "saved_csv_log": "d:\\ONE_DATA\\Fall detection\\R&D\\ML_Baseline\\results\\final_k1\\streamlit_tests\\video (16)_streamlit_log.csv"
+}

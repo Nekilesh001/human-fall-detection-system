@@ -1,0 +1,31 @@
+{
+  "checkpoint": "checkpoints/multi_dataset_k1/exp_b_le2i_urfd/best_candidate.pth",
+  "test_split": "checkpoints/multi_dataset_k1/exp_b_le2i_urfd/test_split.csv",
+  "threshold": 0.365,
+  "overall": {
+    "precision": 0.15932203389830507,
+    "recall": 0.9591836734693877,
+    "f1": 0.27325581395348836,
+    "fpr": 0.9841269821743512,
+    "fnr": 0.040816326114119124,
+    "roc_auc": 0.4600947521865889,
+    "tp": 94,
+    "fp": 496,
+    "tn": 8,
+    "fn": 4
+  },
+  "per_dataset": {
+    "Le2i": {
+      "precision": 0.15776699029126215,
+      "recall": 0.9558823529411765,
+      "f1": 0.2708333333333333,
+      "count": 422
+    },
+    "URFD": {
+      "precision": 0.16292134831460675,
+      "recall": 0.9666666666666667,
+      "f1": 0.27884615384615385,
+      "count": 180
+    }
+  }
+}

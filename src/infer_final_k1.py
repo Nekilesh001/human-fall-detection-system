@@ -117,6 +117,78 @@ class YOLOPoseExtractor:
 
         return raw_33, False, None, None, False, "NO_PERSON"
 
+    def extract_multi_person_landmarks(self, frame_bgr):
+        """
+        Extracts 17 COCO keypoints, 33 canonical landmarks, bounding box, and edge guards
+        for ALL detected human subjects in the frame.
+        Returns: list of dicts [{'bbox', 'raw_33', 'coco_17_px', 'is_partial_person', 'edge_reason'}, ...]
+        """
+        h_img, w_img = frame_bgr.shape[:2]
+        results = self.model.predict(frame_bgr, verbose=False, conf=0.25)
+        
+        candidates = []
+        if len(results) > 0 and len(results[0].keypoints) > 0 and len(results[0].keypoints.data) > 0:
+            kpts_all = results[0].keypoints.data.cpu().numpy() # (N, 17, 3) or (N, 17, 2)
+            conf_all = results[0].keypoints.conf.cpu().numpy() if (results[0].keypoints.conf is not None and len(results[0].keypoints.conf) > 0) else None
+            boxes_all = results[0].boxes.xyxy.cpu().numpy() if (len(results[0].boxes) > 0 and len(results[0].boxes.xyxy) > 0) else None
+
+            num_persons = len(kpts_all)
+            edge_tx = 0.02 * float(w_img)
+            edge_ty = 0.02 * float(h_img)
+
+            for p_idx in range(num_persons):
+                kpts_data = kpts_all[p_idx]
+                confs = conf_all[p_idx] if (conf_all is not None and p_idx < len(conf_all)) else np.ones(17)
+                
+                raw_33 = np.zeros((33, 3), dtype=np.float32)
+                coco_17_px = np.zeros((17, 3), dtype=np.float32)
+                
+                for coco_idx in range(min(17, len(kpts_data))):
+                    x_px, y_px = kpts_data[coco_idx][:2]
+                    conf = float(confs[coco_idx]) if coco_idx < len(confs) else 0.5
+                    coco_17_px[coco_idx] = [x_px, y_px, conf]
+                    
+                    can_idx = COCO_TO_CANONICAL_33.get(coco_idx, None)
+                    if can_idx is not None:
+                        raw_33[can_idx] = [x_px / float(w_img), y_px / float(h_img), conf]
+
+                bbox = boxes_all[p_idx] if (boxes_all is not None and p_idx < len(boxes_all)) else None
+                is_partial_person = False
+                edge_reason = "FULL_PERSON"
+                
+                if bbox is not None:
+                    x1, y1, x2, y2 = bbox
+                    touch_left = (x1 <= edge_tx)
+                    touch_right = (x2 >= float(w_img) - edge_tx)
+                    touch_top = (y1 <= edge_ty)
+                    touch_bottom = (y2 >= float(h_img) - edge_ty)
+                    
+                    valid_kpt_count = np.sum(coco_17_px[:, 2] > 0.3)
+                    ankles_missing = (coco_17_px[15, 2] <= 0.3) and (coco_17_px[16, 2] <= 0.3)
+                    head_missing = (coco_17_px[0, 2] <= 0.3)
+                    
+                    if touch_bottom and (ankles_missing or valid_kpt_count < 12):
+                        is_partial_person = True
+                        edge_reason = "PARTIAL_PERSON_EDGE_BOTTOM"
+                    elif touch_top and (head_missing or valid_kpt_count < 12):
+                        is_partial_person = True
+                        edge_reason = "PARTIAL_PERSON_EDGE_TOP"
+                    elif (touch_left or touch_right) and valid_kpt_count < 12:
+                        is_partial_person = True
+                        edge_reason = "PARTIAL_PERSON_EDGE_SIDE"
+
+                # Filter out detections with confidence sum < 0.5
+                if np.sum(raw_33[:, 2]) >= 0.5:
+                    candidates.append({
+                        "raw_33": raw_33,
+                        "bbox": bbox,
+                        "coco_17_px": coco_17_px,
+                        "is_partial_person": is_partial_person,
+                        "edge_reason": edge_reason
+                    })
+
+        return candidates
+
 def compute_165d_base_features(raw_window_33):
     # raw_window_33: (50, 33, 3)
     T = raw_window_33.shape[0]

@@ -321,27 +321,33 @@ def reset_display_settings():
     st.session_state.show_bbox = True
     st.session_state.show_skeleton = True
     st.session_state.show_keypoints = True
+    st.session_state.show_person_id = True
+    st.session_state.show_state_label = True
+    st.session_state.show_prob = True
     st.session_state.show_status_text = True
     st.session_state.show_ml_info = True
     st.session_state.show_alert_perimeter = True
     st.session_state.render_quality = "High"
     st.session_state.bbox_thickness = 2
-    st.session_state.skeleton_thickness = 1
-    st.session_state.keypoint_size = 2
-    st.session_state.text_scale = 0.45
+    st.session_state.skeleton_thickness = 2
+    st.session_state.keypoint_size = 3
+    st.session_state.text_scale = 0.50
 
 defaults = [
     ("show_bbox", True),
     ("show_skeleton", True),
     ("show_keypoints", True),
+    ("show_person_id", True),
+    ("show_state_label", True),
+    ("show_prob", True),
     ("show_status_text", True),
     ("show_ml_info", True),
     ("show_alert_perimeter", True),
     ("render_quality", "High"),
     ("bbox_thickness", 2),
-    ("skeleton_thickness", 1),
-    ("keypoint_size", 2),
-    ("text_scale", 0.45)
+    ("skeleton_thickness", 2),
+    ("keypoint_size", 3),
+    ("text_scale", 0.50)
 ]
 for k, v in defaults:
     if k not in st.session_state:
@@ -357,6 +363,9 @@ st.sidebar.markdown("### 🎨 DISPLAY CONTROLS")
 st.sidebar.checkbox("Show Person Bounding Box", key="show_bbox")
 st.sidebar.checkbox("Show Pose Skeleton", key="show_skeleton")
 st.sidebar.checkbox("Show Keypoints", key="show_keypoints")
+st.sidebar.checkbox("Show Person ID Badge", key="show_person_id")
+st.sidebar.checkbox("Show State Label", key="show_state_label")
+st.sidebar.checkbox("Show Fall Probability", key="show_prob")
 st.sidebar.checkbox("Show Application Status Text", key="show_status_text")
 st.sidebar.checkbox("Show ML Information", key="show_ml_info")
 st.sidebar.checkbox("Show Alert Perimeter", key="show_alert_perimeter")

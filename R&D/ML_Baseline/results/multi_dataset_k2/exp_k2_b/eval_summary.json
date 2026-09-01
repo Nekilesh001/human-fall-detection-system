@@ -1,0 +1,63 @@
+{
+  "checkpoint": "checkpoints/multi_dataset_k2/exp_k2_b/best_candidate.pth",
+  "test_split": "checkpoints/multi_dataset_k2/exp_k2_b/test_split.csv",
+  "threshold": 0.38000000000000006,
+  "overall": {
+    "precision": 0.4266666666666667,
+    "recall": 0.6666666666666666,
+    "f1": 0.5203252032520326,
+    "fpr": 0.13312693498452013,
+    "fnr": 0.3333333333333333,
+    "roc_auc": 0.8696465428276574,
+    "pr_auc": 0.4629136834873417,
+    "tp": 32,
+    "fp": 43,
+    "tn": 280,
+    "fn": 16
+  },
+  "per_dataset": {
+    "Le2i": {
+      "precision": 0.47761194029850745,
+      "recall": 0.6666666666666666,
+      "f1": 0.5565217391304348,
+      "fpr": 0.13565891472868216,
+      "fnr": 0.3333333333333333,
+      "roc_auc": 0.8605458656330749,
+      "count": 306,
+      "fall_count": 48
+    },
+    "URFD": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.12307692307692308,
+      "fnr": 0.0,
+      "roc_auc": 0.5,
+      "count": 65,
+      "fall_count": 0
+    }
+  },
+  "diagnostics": {
+    "train": {
+      "N": 2353,
+      "mean_fall_prob": 0.7071792483329773,
+      "mean_norm_prob": 0.03532009571790695,
+      "roc_auc": 0.9930891555674044,
+      "pr_auc": 0.9517075597995394
+    },
+    "validation": {
+      "N": 412,
+      "mean_fall_prob": 0.5040916204452515,
+      "mean_norm_prob": 0.10025578737258911,
+      "roc_auc": 0.8242648875710403,
+      "pr_auc": 0.44670722143679914
+    },
+    "test": {
+      "N": 371,
+      "mean_fall_prob": 0.4797959625720978,
+      "mean_norm_prob": 0.10430573672056198,
+      "roc_auc": 0.8696465428276574,
+      "pr_auc": 0.4629136834873417
+    }
+  }
+}

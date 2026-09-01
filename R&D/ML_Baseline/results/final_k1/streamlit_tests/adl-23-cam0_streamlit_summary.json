@@ -1,0 +1,17 @@
+{
+  "video_name": "adl-23-cam0.mp4",
+  "total_frames": 220,
+  "evaluated_windows": 171,
+  "warmup_frames": 49,
+  "duration_sec": 7.33,
+  "mean_fps": 53.25,
+  "mean_latency_ms": 18.78,
+  "p95_latency_ms": 25.33,
+  "raw_fall_windows": 62,
+  "stabilized_fall_windows": 60,
+  "alert_events": 1,
+  "first_alert_frame": 161,
+  "first_alert_time_sec": 5.37,
+  "production_threshold": 0.365,
+  "saved_csv_log": "d:\\ONE_DATA\\Fall detection\\R&D\\ML_Baseline\\results\\final_k1\\streamlit_tests\\adl-23-cam0_streamlit_log.csv"
+}

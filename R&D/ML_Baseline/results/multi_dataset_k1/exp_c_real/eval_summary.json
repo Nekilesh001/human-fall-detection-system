@@ -1,0 +1,31 @@
+{
+  "checkpoint": "checkpoints/multi_dataset_k1/exp_c_real/best_candidate.pth",
+  "test_split": "checkpoints/multi_dataset_k1/exp_c_real/test_split.csv",
+  "threshold": 0.30999999999999994,
+  "overall": {
+    "precision": 0.4928571428571429,
+    "recall": 0.8346774193548387,
+    "f1": 0.6197604790419161,
+    "fpr": 0.4303030294337313,
+    "fnr": 0.165322579978538,
+    "roc_auc": 0.7582559465623981,
+    "tp": 207,
+    "fp": 213,
+    "tn": 282,
+    "fn": 41
+  },
+  "per_dataset": {
+    "Le2i": {
+      "precision": 0.41025641025641024,
+      "recall": 0.8571428571428571,
+      "f1": 0.5549132947976878,
+      "count": 319
+    },
+    "Multicam": {
+      "precision": 0.5247524752475248,
+      "recall": 0.828125,
+      "f1": 0.6424242424242425,
+      "count": 424
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "video_name": "cam3.avi",
+  "total_frames": 819,
+  "evaluated_windows": 819,
+  "warmup_frames": 49,
+  "duration_sec": 6.83,
+  "mean_fps": 35.24,
+  "mean_latency_ms": 28.38,
+  "p95_latency_ms": 30.16,
+  "raw_fall_windows": 537,
+  "stabilized_fall_windows": 410,
+  "alert_events": 33,
+  "first_alert_frame": 113,
+  "first_alert_time_sec": 0.94,
+  "production_threshold": 0.365,
+  "saved_csv_log": "d:\\ONE_DATA\\Fall detection\\R&D\\ML_Baseline\\results\\final_k1\\streamlit_tests\\cam3_streamlit_log.csv"
+}

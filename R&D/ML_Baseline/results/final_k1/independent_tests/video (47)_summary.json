@@ -1,0 +1,21 @@
+{
+  "video_name": "video (47).avi",
+  "video_path": "D:\\ONE_DATA\\Fall detection\\Le2i\\data\\Coffee_room_01\\Coffee_room_01\\Videos\\video (47).avi",
+  "total_video_frames": 729,
+  "warmup_frames": 49,
+  "evaluated_windows": 680,
+  "test_execution_time_sec": 9.03,
+  "mean_latency_ms": 9.96,
+  "p95_latency_ms": 11.64,
+  "max_latency_ms": 22.65,
+  "mean_fps": 100.43,
+  "decision_threshold": 0.365,
+  "raw_fall_windows": 96,
+  "stabilized_fall_windows": 94,
+  "alert_activations_count": 1,
+  "first_p_fall_above_tau_frame": 634,
+  "first_raw_fall_frame": 634,
+  "first_stabilized_alert_frame": 636,
+  "windows_required_for_alert": 3,
+  "csv_log_path": "d:\\ONE_DATA\\Fall detection\\R&D\\ML_Baseline\\results\\final_k1\\independent_tests\\video (47)_log.csv"
+}
